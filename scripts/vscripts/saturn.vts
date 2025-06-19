@@ -1,0 +1,53 @@
+import { Instance } from "cspointscript"
+
+// Width  (Left   --> Right)
+// Depth  (Up     --> Down)
+// Height (Bottom --> Top)
+let SaturnDimensions = [6, 6]; //[Width, Depth]
+let CubeDimensions = [8, 8, 8]; //[Width, Depth, Height]
+let ElementDimensions = [48, 48, 48];
+
+function CubeIndex(x, y) {
+    return "cube." + y + x;
+}
+
+function ElementIndex(x, y, z) {
+    return "element." + z + y + x;
+}
+
+function Index(x, y, z) {
+    let cubeIndex_x = Math.floor(x / CubeDimensions[0]);
+    let cubeIndex_y = Math.floor(y / CubeDimensions[1]);
+    let cubeIndex = CubeIndex(
+	cubeIndex_x,
+	cubeIndex_y,
+    );
+
+    let elementIndex_x = x % CubeDimensions[0];
+    let elementIndex_y = y % CubeDimensions[1];
+    let elementIndex = ElementIndex(
+	elementIndex_x,
+	elementIndex_y,
+	z,
+    );
+    
+    return cubeIndex + "_" + elementIndex;
+}
+
+function KillElement(x, y, z) {
+    let target = Index(x, y, z) + "_fill";
+    Instance.Msg("Black Saturn: Killing - " + target);
+    Instance.EntFireBroadcast(target, "Break");
+}
+
+
+Instance.PublicMethod("Test", () => {
+    Instance.Msg("Black Saturn: Test Executed!");
+    KillElement(0, 0, 0);
+    KillElement(12, 0, 0);
+});
+
+Instance.InitialActivate(() => {
+    Instance.Msg("Black Saturn: Battle Royale Initialized!");
+});
+

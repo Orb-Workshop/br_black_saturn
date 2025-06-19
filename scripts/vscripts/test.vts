@@ -1,4 +1,4 @@
-import { Instance } from "serverpointentity"
+import { Instance } from "cspointscript"
 
 function Dump(obj,name=""){
 	Instance.Msg("Dump "+name+":")
