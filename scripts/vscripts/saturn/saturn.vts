@@ -1,0 +1,5 @@
+import { Instance } from "cspointscript"
+
+Instance.InitialActivate(() => {
+    Instance.Msg("Battle Royale Black Saturn Initialized!");
+});
