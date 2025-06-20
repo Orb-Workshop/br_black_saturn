@@ -50,9 +50,14 @@ function Index(x, y, z) {
     return cubeIndex + "_" + elementIndex;
 }
 
-function ElementBreak(x, y, z) {
+function ElementEnable(x, y, z) {
     let target = Index(x, y, z) + "_fill";
-    Instance.EntFireBroadcast(target, "Break");
+    Instance.EntFireBroadcast(target, "Enable");
+}
+
+function ElementDisable(x, y, z) {
+    let target = Index(x, y, z) + "_fill";
+    Instance.EntFireBroadcast(target, "Disable");
 }
 
 class Saturn {
@@ -106,9 +111,12 @@ class Saturn {
     process() {
         this.forEachIndex((i, j, k) => {
             let element = this.getAt(i,j,k);
-            if (!element.fill) {
-                ElementBreak(i,j,k);
-            }   
+            if (element.fill) {
+                ElementEnable(i,j,k);
+            }
+	    else {
+		ElementDisable(i,j,k);
+	    }
         });
     }
 }
