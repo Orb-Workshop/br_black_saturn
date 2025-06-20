@@ -1,11 +1,18 @@
 import { Instance } from "cspointscript"
 
-// Width  (Left   --> Right)
-// Depth  (Up     --> Down)
-// Height (Bottom --> Top)
-let SaturnDimensions = [6, 6]; //[Width, Depth]
-let CubeDimensions = [8, 8, 8]; //[Width, Depth, Height]
-let ElementDimensions = [48, 48, 48];
+// Width (x)  (Left   --> Right)
+// Height(y)  (Top    --> Bottom)
+// Depth (z)  (Down   --> Up)
+/*
+  Notes
+  - Map cubes are aligned top-left to the vmap center origin
+    - ie. cube.00_element.000_fill top-left corner is located at [0,0,0]
+      - Each fill element is 48x48x48, so cube.00_element.001_fill would be at [48,0,0], etc...
+ */
+
+let SaturnDimensions = [6, 6];       // [Width, Height]
+let CubeDimensions = [8, 8, 8];      // [Width, Height, Depth]
+let ElementDimensions = [48, 48, 8];
 
 function CubeIndex(x, y) {
     return "cube." + y + x;
@@ -34,17 +41,96 @@ function Index(x, y, z) {
     return cubeIndex + "_" + elementIndex;
 }
 
-function KillElement(x, y, z) {
+function ElementBreak(x, y, z) {
     let target = Index(x, y, z) + "_fill";
-    Instance.Msg("Black Saturn: Killing - " + target);
+    //Instance.Msg("Black Saturn: Breaking - " + target);
     Instance.EntFireBroadcast(target, "Break");
 }
 
+class Saturn {
+    elements: any[];
+
+    constructor() {
+	this.elements = new Object[this.size()];
+	this.forEachIndex((i,j,k) => {
+	    this.elements[this.index(i,j,k)] = {
+		fill: false,
+	    };
+	});
+    }
+
+    width() { return ElementDimensions[0]; }
+    height() { return ElementDimensions[1]; }
+    depth() { return ElementDimensions[2]; }
+    size() {
+	return (this.width() * this.height() * this.depth());
+    }
+
+    index(x, y, z) {
+	let array_index = this.width() * (this.height() * z + y) + x
+	return array_index;
+    }
+
+    forEachIndex(f) {
+	for (let i = 0; i < this.width(); i++) {
+	    for (let j = 0; j < this.height(); j++) {
+		for (let k = 0; k < this.depth(); k++) {
+		    f.bind(this)(i,j,k);
+		}
+	    }
+	}
+    }
+
+    getAt(x, y, z) {
+	return this.elements[this.index(x,y,z)];
+    }
+
+    getAtIndex(idx) {
+	return this.elements[idx];
+    }
+
+    fill(x, y, z) {
+	this.getAt(x,y,z).fill = true;
+    }
+
+    unfill(x, y, z) {
+	this.getAt(x,y,z).fill = false;
+    }
+
+    process() {
+	this.forEachIndex((i,j,k) => {
+	    let element = this.getAt(i,j,k);
+	    if (!element.fill) {
+		ElementBreak(i,j,k);
+	    }	
+	});
+    }
+}
+
+/* PROCGEN */
+
+function coinFlip() {
+    if (Math.random() > 0.5) return true;
+    return false;
+}
+
+function proc_gen(seed=0) {
+    let saturn = new Saturn();
+    saturn.forEachIndex((i,j,k) => {
+	if (coinFlip())
+	    saturn.fill(i,j,k);
+	
+	// Do cool procgen stuff...
+
+    });
+    saturn.process();
+}
+
+/* Public */
 
 Instance.PublicMethod("Test", () => {
     Instance.Msg("Black Saturn: Test Executed!");
-    KillElement(0, 0, 0);
-    KillElement(12, 0, 0);
+    proc_gen();
 });
 
 Instance.InitialActivate(() => {
