@@ -1,4 +1,13 @@
 import { Instance } from "cspointscript"
+/*
+let MockFunction = (...args: any[]) => {};
+let Instance = {
+    Msg: (s: string) => {console.log(s)},
+    EntFireBroadcast: MockFunction,
+    PublicMethod: MockFunction,
+    InitialActivate: MockFunction,
+}
+*/
 
 // Width (x)  (Left   --> Right)
 // Height(y)  (Top    --> Bottom)
@@ -26,16 +35,16 @@ function Index(x, y, z) {
     let cubeIndex_x = Math.floor(x / CubeDimensions[0]);
     let cubeIndex_y = Math.floor(y / CubeDimensions[1]);
     let cubeIndex = CubeIndex(
-	cubeIndex_x,
-	cubeIndex_y,
+        cubeIndex_x,
+        cubeIndex_y,
     );
 
     let elementIndex_x = x % CubeDimensions[0];
     let elementIndex_y = y % CubeDimensions[1];
     let elementIndex = ElementIndex(
-	elementIndex_x,
-	elementIndex_y,
-	z,
+        elementIndex_x,
+        elementIndex_y,
+        z,
     );
     
     return cubeIndex + "_" + elementIndex;
@@ -43,67 +52,64 @@ function Index(x, y, z) {
 
 function ElementBreak(x, y, z) {
     let target = Index(x, y, z) + "_fill";
-    //Instance.Msg("Black Saturn: Breaking - " + target);
     Instance.EntFireBroadcast(target, "Break");
 }
 
 class Saturn {
-    elements: any[];
-
     constructor() {
-	this.elements = new Object[this.size()];
-	this.forEachIndex((i,j,k) => {
-	    this.elements[this.index(i,j,k)] = {
-		fill: false,
-	    };
-	});
+        this.elements = [];
+        this.forEachIndex((i, j, k) => {
+            this.elements.push({
+                fill: false,
+            });
+        });
     }
 
     width() { return ElementDimensions[0]; }
     height() { return ElementDimensions[1]; }
     depth() { return ElementDimensions[2]; }
     size() {
-	return (this.width() * this.height() * this.depth());
+        return (this.width() * this.height() * this.depth());
     }
 
     index(x, y, z) {
-	let array_index = this.width() * (this.height() * z + y) + x
-	return array_index;
+        let array_index = this.width() * (this.height() * z + y) + x
+        return array_index;
     }
 
     forEachIndex(f) {
-	for (let i = 0; i < this.width(); i++) {
-	    for (let j = 0; j < this.height(); j++) {
-		for (let k = 0; k < this.depth(); k++) {
-		    f.bind(this)(i,j,k);
-		}
-	    }
-	}
+        for (let i = 0; i < this.width(); i++) {
+            for (let j = 0; j < this.height(); j++) {
+                for (let k = 0; k < this.depth(); k++) {
+                    f.bind(this)(i,j,k);
+                }
+            }
+        }
     }
 
     getAt(x, y, z) {
-	return this.elements[this.index(x,y,z)];
+            return this.elements[this.index(x,y,z)];
     }
 
     getAtIndex(idx) {
-	return this.elements[idx];
+            return this.elements[idx];
     }
 
     fill(x, y, z) {
-	this.getAt(x,y,z).fill = true;
+            this.getAt(x,y,z).fill = true;
     }
 
     unfill(x, y, z) {
-	this.getAt(x,y,z).fill = false;
+            this.getAt(x,y,z).fill = false;
     }
 
     process() {
-	this.forEachIndex((i,j,k) => {
-	    let element = this.getAt(i,j,k);
-	    if (!element.fill) {
-		ElementBreak(i,j,k);
-	    }	
-	});
+        this.forEachIndex((i, j, k) => {
+            let element = this.getAt(i,j,k);
+            if (!element.fill) {
+                ElementBreak(i,j,k);
+            }   
+        });
     }
 }
 
@@ -116,17 +122,18 @@ function coinFlip() {
 
 function proc_gen(seed=0) {
     let saturn = new Saturn();
-    saturn.forEachIndex((i,j,k) => {
-	if (coinFlip())
-	    saturn.fill(i,j,k);
-	
-	// Do cool procgen stuff...
+    saturn.forEachIndex((i, j, k) => {
+        if (coinFlip()) saturn.fill(i,j,k);
 
+        if (i >= 0 && i < 5 && j == 5 && k == 5) {
+            Instance.Msg(JSON.stringify(saturn.getAt(i,j,k)));
+        }
     });
+
     saturn.process();
 }
 
-/* Public */
+/* PUBLIC */
 
 Instance.PublicMethod("Test", () => {
     Instance.Msg("Black Saturn: Test Executed!");
@@ -136,4 +143,3 @@ Instance.PublicMethod("Test", () => {
 Instance.InitialActivate(() => {
     Instance.Msg("Black Saturn: Battle Royale Initialized!");
 });
-
