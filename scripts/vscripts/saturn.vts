@@ -78,7 +78,7 @@ class Saturn {
     }
 
     index(x, y, z) {
-        let array_index = this.width() * (this.height() * z + y) + x
+        let array_index = this.width() * (this.height() * z + y) + x;
         return array_index;
     }
 

@@ -5,21 +5,21 @@
 
 // Pad the input seed into a hashed value
 function cyrb128(str) {
-    let h1 = 1779033703, h2 = 3144134277,
-        h3 = 1013904242, h4 = 2773480762;
-    for (let i = 0, k; i < str.length; i++) {
-        k = str.charCodeAt(i);
-        h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
-        h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
-        h3 = h4 ^ Math.imul(h3 ^ k, 951274213);
-        h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
-    }
-    h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067);
-    h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
-    h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
-    h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
-    h1 ^= (h2 ^ h3 ^ h4), h2 ^= h1, h3 ^= h1, h4 ^= h1;
-    return [h1>>>0, h2>>>0, h3>>>0, h4>>>0];
+  let h1 = 1779033703, h2 = 3144134277,
+      h3 = 1013904242, h4 = 2773480762;
+  for (let i = 0, k; i < str.length; i++) {
+    k = str.charCodeAt(i);
+    h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
+    h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
+    h3 = h4 ^ Math.imul(h3 ^ k, 951274213);
+    h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+  }
+  h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067);
+  h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
+  h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
+  h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
+  h1 ^= (h2 ^ h3 ^ h4), h2 ^= h1, h3 ^= h1, h4 ^= h1;
+  return [h1>>>0, h2>>>0, h3>>>0, h4>>>0];
 }
 
 // Seeded Random Number Generator Algorithm
@@ -62,15 +62,15 @@ class SeededRandomNumberGenerator {
       dist.push([cstart, cend, value]);
       cstart = cend;
     }
-    return dist;
+    return dist; // [[cstart, cend, value], ...]
   }
   
   /*
     Example:
     
-    let s = new SeededRandomNumberGenerator("Test");
+    let srng = new SeededRandomNumberGenerator("Test2");
     let dist = [["Head", 2], ["Chest", 3], ["Legs", 1]];
-    let gen = () => {return s.random_distribution(dist);};
+    let gen = () => { return srng.random_distribution(dist); };
     console.log(gen()); // Head
     console.log(gen()); // Head
     console.log(gen()); // Legs
@@ -79,7 +79,7 @@ class SeededRandomNumberGenerator {
     console.log(gen()); // Chest
 
     // actual output varies by seed.
-  */
+    */
 
   // Get random distribution based on tuple 
   random_distribution(tupl) {
@@ -96,7 +96,21 @@ class SeededRandomNumberGenerator {
       return (rpos >= cstart && rpos <= cend);
     })[2];
   }
+
+  // `norm` is a value between 0.0 and 1.0, and returns true if the
+  // generated value is less than `norm`.
+  /*
+    Examples
+    let srng = new SeededRandomNumberGenerator("Test");
+    let coinFlip = () => { return srng.random_normal(0.5); };
+    
+  */
+  random_normal(norm) {
+    return (this.generator() <= norm);
+  }
 }
+
+
 
 
 // Room Placement Techniques
@@ -109,12 +123,86 @@ class SeededRandomNumberGenerator {
 // Perlin or Simplex Noise
 // Combine Techniques...
 
-let s = new SeededRandomNumberGenerator("Test2");
+// Saturn Phantom
+let SaturnDimensions = [6, 6];       // [Width, Height]
+let CubeDimensions = [8, 8, 8];      // [Width, Height, Depth]
+let ElementDimensions = [48, 48, 8];
+
+class Saturn {
+  constructor() {
+    this.elements = [];
+    this.forEachIndex((i, j, k) => {
+      this.elements.push({
+        fill: false,
+      });
+    });
+  }
+
+  width() { return ElementDimensions[0]; }
+  height() { return ElementDimensions[1]; }
+  depth() { return ElementDimensions[2]; }
+  size() {
+    return (this.width() * this.height() * this.depth());
+  }
+
+  index(x, y, z) {
+    let array_index = this.width() * (this.height() * z + y) + x;
+    return array_index;
+  }
+
+  forEachIndex(f) {
+    for (let k = 0; k < this.depth(); k++) {
+      for (let j = 0; j < this.height(); j++) {
+        for (let i = 0; i < this.width(); i++) {
+          f.bind(this)(i,j,k);
+        }
+      }
+    }
+  }
+
+  getAt(x, y, z) {
+    return this.elements[this.index(x,y,z)];
+  }
+
+  getAtIndex(idx) {
+    return this.elements[idx];
+  }
+
+  fill(x, y, z) {
+    this.getAt(x,y,z).fill = true;
+  }
+
+  unfill(x, y, z) {
+    this.getAt(x,y,z).fill = false;
+  }
+
+  display2d() {
+    let s = "";
+    for (let j = 0; j < this.height(); j++) {
+      for (let i = 0; i < this.width(); i++) {
+	let element = this.getAt(i,j,0);
+	if (element.fill) {
+	  s += "X";
+	}
+	else {
+	  s += " ";
+	}
+      }
+      s += "\n";
+    }
+    console.log("\n" + s);
+  }
+}
+
+let srng = new SeededRandomNumberGenerator("Test");
 let dist = [["Head", 2], ["Chest", 3], ["Legs", 1]];
-let gen = () => {return s.random_distribution(dist);};
-console.log(gen());
-console.log(gen());
-console.log(gen());
-console.log(gen());
-console.log(gen());
-console.log(gen());
+let gen = () => { return srng.random_distribution(dist); };
+let coinFlip = () => { return srng.random_normal(0.5); };
+let saturn = new Saturn();
+
+saturn.forEachIndex((i, j, k) => {
+  if (k > 0) return;
+  if (coinFlip()) saturn.fill(i,j,k);
+});
+
+saturn.display2d();
