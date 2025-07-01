@@ -103,25 +103,26 @@ class SeededRandomNumberGenerator {
     Examples
     let srng = new SeededRandomNumberGenerator("Test");
     let coinFlip = () => { return srng.random_normal(0.5); };
-    
+    let quarter = () => { return coinFlip() && coinFlip(); };
+    let deca = () => { return srng.random_normal(0.1); };
   */
   random_normal(norm) {
     return (this.generator() <= norm);
   }
+
+  random_float(start, end) {
+    if (end === undefined) {
+      end = start || 1;
+      start = 0;
+    }
+    let result = (end - start) * this.generator() + start;
+    return result;
+  }
+
+  random_integer(start, end) {
+    return Math.round(this.random_float(start, end));
+  }
 }
-
-
-
-
-// Room Placement Techniques
-// Animated BSP
-// Cellular Automata
-// Drunkard's Walk
-// Diffusion Limited Aggregation
-// Centralized DLA
-// Voronoi Diagrams
-// Perlin or Simplex Noise
-// Combine Techniques...
 
 // Saturn Phantom
 let SaturnDimensions = [6, 6];       // [Width, Height]
@@ -130,10 +131,19 @@ let ElementDimensions = [48, 48, 8];
 
 class Saturn {
   constructor() {
+    // Populate Elements
     this.elements = [];
     this.forEachIndex((i, j, k) => {
       this.elements.push({
         fill: false,
+      });
+    });
+
+    // Populate Cubes
+    this.cubes = [];
+    this.forEachCubeIndex((i, j) => {
+      this.cubes.push({
+	playerSpawn: false,
       });
     });
   }
@@ -168,14 +178,41 @@ class Saturn {
     return this.elements[idx];
   }
 
+  // Cube Magic
+
+  cubeWidth() { return SaturnDimensions[0]; }
+  cubeHeight() { return SaturnDimensions[1]; }
+  cubeSize() { return (this.cubeWidth() * this.cubeHeight()); }
+  cubeIndex(x, y) {
+    let array_index = this.width() * y + x;
+    return array_index;
+  }
+  
+  forEachCubeIndex(f) {
+    for (let j = 0; j < this.cubeHeight(); j++) {
+      for (let i = 0; i < this.cubeWidth(); i++) {
+	f.bind(this)(i, j);
+      }
+    }
+  }
+
+  getCubeAt(x, y) {
+    return this.cubes[this.cubeIndex(x, y)];
+  }
+
+  getCubeAtIndex(idx) {
+    return this.cubes[idx];
+  }
+
   fill(x, y, z) {
-    this.getAt(x,y,z).fill = true;
+    this.getAt(x, y, z).fill = true;
   }
 
   unfill(x, y, z) {
-    this.getAt(x,y,z).fill = false;
+    this.getAt(x, y, z).fill = false;
   }
 
+  // Only displays the first z-plane, [i, j, 0]
   display2d() {
     let s = "";
     for (let j = 0; j < this.height(); j++) {
@@ -194,15 +231,65 @@ class Saturn {
   }
 }
 
+/*
+  
+  Procedural Generation Strategies
+
+ */
+
+
+// Room Placement
+const RP_DEFAULT_BORDER_WIDTH = 1;
+const RP_DEFAULT_HALLWAY_WIDTH = 4;
+const RP_DEFAULT_CEILING_HEIGHT = 4;
+class Procgen_RoomPlacement {
+  constructor(srng, saturn, options) {
+    this.srng = srng;
+    this.saturn = saturn;
+    this.options = options || {};
+    this.layout_distribution = options.layout_distribution || {
+      BigRoom: 50,
+      SmallRoom: 50,
+      Hallway: 10,
+    };
+    this.borderWidth = options.borderWidth || RP_DEFAULT_BORDER_WIDTH;
+    this.hallwayWidth = options.hallwayWidth || RP_DEFAULT_HALLWAY_WIDTH;
+    this.ceilingHeight = options.ceilingHeight || RP_DEFAULT_CEILING_HEIGHT;
+  }
+
+  process() {
+    
+    return this;
+  }
+  
+}
+
+// Animated BSP
+// Cellular Automata
+// Drunkard's Walk
+// Diffusion Limited Aggregation
+// Centralized DLA
+// Voronoi Diagrams
+// Perlin or Simplex Noise
+// Combine Techniques...
+
+
+// BEGIN
 let srng = new SeededRandomNumberGenerator("Test");
 let dist = [["Head", 2], ["Chest", 3], ["Legs", 1]];
 let gen = () => { return srng.random_distribution(dist); };
 let coinFlip = () => { return srng.random_normal(0.5); };
 let saturn = new Saturn();
+let procgen_roomPlacement = new Procgen_RoomPlacement(
+  srng, saturn, {
+    
+  }).process();
+
+
 
 saturn.forEachIndex((i, j, k) => {
   if (k > 0) return;
-  if (coinFlip()) saturn.fill(i,j,k);
+  //if (coinFlip()) saturn.fill(i,j,k);
 });
 
 saturn.display2d();
