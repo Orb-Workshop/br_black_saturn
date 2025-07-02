@@ -316,12 +316,22 @@ class Procgen_RoomPlacement {
 	continue;
       
       // Check if it can co-exist with other placed rooms
+      let bCollision = false;
       for (let i = 0; i < this.placedRooms.length; i++) {
 	let placedRoom = this.placedRooms[i];
 	// BB Checks
-	
+
+	// x-overlap
+	if ((room.x + room.w) < placedRoom.x || room.x > (placedRoom.x + placedRoom.w))
+	  continue;
+
+	// y-overlap
+	if ((room.y + room.h) < placedRoom.y || room.y > (placedRoom.y + placedRoom.h))
+	  continue;
+
+	bCollision = true;
       }
-      this.placedRooms.push(room);
+      if (!bCollision) this.placedRooms.push(room);
     }
   }
 
@@ -330,10 +340,13 @@ class Procgen_RoomPlacement {
   }
 
   _modify_saturn() {
+    console.log(this.placedRooms);
     this.saturn.forEachIndex((i,j,k) => {
       this.placedRooms.map((placedRoom) => {
-	if (i == placedRoom.x || i == (placedRoom.x + placedRoom.w) &&
-	    j == placedRoom.y || j == (placedRoom.y + placedRoom.h)) {
+	if ((i == placedRoom.x || i == (placedRoom.x + placedRoom.w-1)) &&
+	    (j >= placedRoom.y && j <= (placedRoom.y + placedRoom.h-1)) ||
+	    (j == placedRoom.y || j == (placedRoom.y + placedRoom.h-1)) &&
+	    (i >= placedRoom.x && i <= (placedRoom.x + placedRoom.w-1))) {
 	  this.saturn.getAt(i, j, k).fill = true;
 	}
       });
@@ -371,7 +384,7 @@ let coinFlip = () => { return srng.random_normal(0.5); };
 let saturn = new Saturn();
 let procgen_roomPlacement = new Procgen_RoomPlacement(
   srng, saturn, {
-    
+    numRooms: 6,
   }).process();
 
 
