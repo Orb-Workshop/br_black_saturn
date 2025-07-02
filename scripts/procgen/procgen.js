@@ -69,7 +69,11 @@ class SeededRandomNumberGenerator {
     Example:
     
     let srng = new SeededRandomNumberGenerator("Test2");
-    let dist = [["Head", 2], ["Chest", 3], ["Legs", 1]];
+    let dist = {
+      Head: 2,
+      Chest: 3,
+      Legs: 1,
+    }
     let gen = () => { return srng.random_distribution(dist); };
     console.log(gen()); // Head
     console.log(gen()); // Head
@@ -82,7 +86,11 @@ class SeededRandomNumberGenerator {
     */
 
   // Get random distribution based on tuple 
-  random_distribution(tupl) {
+  random_distribution(o) {
+    let tupl = [];
+    for (const [k, v] of Object.entries(o)) {
+      tupl.push([k, v]);
+    }
     let percent_total = tupl.reduce((sum, pair) => {
       return (pair[1] + sum);
     }, 0);
@@ -242,23 +250,100 @@ class Saturn {
 const RP_DEFAULT_BORDER_WIDTH = 1;
 const RP_DEFAULT_HALLWAY_WIDTH = 4;
 const RP_DEFAULT_CEILING_HEIGHT = 4;
+const RP_DEFAULT_NUM_ROOMS = 6;
 class Procgen_RoomPlacement {
   constructor(srng, saturn, options) {
     this.srng = srng;
     this.saturn = saturn;
     this.options = options || {};
     this.layout_distribution = options.layout_distribution || {
-      BigRoom: 50,
+      BigRoom: 20,
       SmallRoom: 50,
-      Hallway: 10,
+      LongRoom: 10,
     };
     this.borderWidth = options.borderWidth || RP_DEFAULT_BORDER_WIDTH;
     this.hallwayWidth = options.hallwayWidth || RP_DEFAULT_HALLWAY_WIDTH;
     this.ceilingHeight = options.ceilingHeight || RP_DEFAULT_CEILING_HEIGHT;
+    this.numRooms = options.numRooms || RP_DEFAULT_NUM_ROOMS;
+
+    //
+    this.placedRooms = [];
+    this.placedHallways = [];
+  }
+
+  // Generate Room Placement
+  _generate_rooms() {
+    while (this.placedRooms.length < this.numRooms) {
+      let layout_type = this.srng.random_distribution(this.layout_distribution);
+      let roomDimensions = [0, 0];
+      if (layout_type == "BigRoom") {
+	roomDimensions[0] = this.srng.random_integer(10,20);
+	roomDimensions[1] = this.srng.random_integer(10,20);
+      }
+      else if (layout_type == "SmallRoom") {
+	roomDimensions[0] = this.srng.random_integer(5,10);
+	roomDimensions[1] = this.srng.random_integer(5,10);
+      }
+      else if (layout_type == "LongRoom") {
+	// Horizontal
+	if (this.srng.random_normal(0.5)) {
+	  roomDimensions[0] = this.srng.random_integer(10,20);
+	  roomDimensions[1] = this.srng.random_integer(4,6);
+	}
+	// Vertical
+	else {
+	  roomDimensions[0] = this.srng.random_integer(4,6);
+	  roomDimensions[1] = this.srng.random_integer(10,20);
+	}
+      }
+
+      // Get Starting X and Y positions to place the top-left corner of the room.
+      let roomPosition = [
+	this.srng.random_integer(this.saturn.width()-1),
+	this.srng.random_integer(this.saturn.height()-1),
+      ];
+      
+      let room = {
+	x: roomPosition[0],
+	y: roomPosition[1],
+	w: roomDimensions[0],
+	h: roomDimensions[1],
+      };
+
+      // Check if the room is within the world bounds.
+      if ((room.x + room.w) > this.saturn.width() ||
+	  (room.y + room.h) > this.saturn.height())
+	continue;
+      
+      // Check if it can co-exist with other placed rooms
+      for (let i = 0; i < this.placedRooms.length; i++) {
+	let placedRoom = this.placedRooms[i];
+	// BB Checks
+	
+      }
+      this.placedRooms.push(room);
+    }
+  }
+
+  _generate_hallways() {
+
+  }
+
+  _modify_saturn() {
+    this.saturn.forEachIndex((i,j,k) => {
+      this.placedRooms.map((placedRoom) => {
+	if (i == placedRoom.x || i == (placedRoom.x + placedRoom.w) &&
+	    j == placedRoom.y || j == (placedRoom.y + placedRoom.h)) {
+	  this.saturn.getAt(i, j, k).fill = true;
+	}
+      });
+    });
   }
 
   process() {
-    
+    this._generate_rooms();
+    this._generate_hallways();
+    this._modify_saturn();
     return this;
   }
   
@@ -276,7 +361,11 @@ class Procgen_RoomPlacement {
 
 // BEGIN
 let srng = new SeededRandomNumberGenerator("Test");
-let dist = [["Head", 2], ["Chest", 3], ["Legs", 1]];
+let dist = {
+  Head: 2,
+  Chest: 3,
+  Legs: 1,
+};
 let gen = () => { return srng.random_distribution(dist); };
 let coinFlip = () => { return srng.random_normal(0.5); };
 let saturn = new Saturn();
