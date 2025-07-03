@@ -248,7 +248,7 @@ class Saturn {
 
 // Room Placement
 const RP_DEFAULT_BORDER_WIDTH = 1;
-const RP_DEFAULT_HALLWAY_WIDTH = 4;
+const RP_DEFAULT_HALLWAY_WIDTH = 3;
 const RP_DEFAULT_CEILING_HEIGHT = 4;
 const RP_DEFAULT_NUM_ROOMS = 6;
 class Procgen_RoomPlacement {
@@ -288,11 +288,11 @@ class Procgen_RoomPlacement {
 	// Horizontal
 	if (this.srng.random_normal(0.5)) {
 	  roomDimensions[0] = this.srng.random_integer(10,20);
-	  roomDimensions[1] = this.srng.random_integer(4,6);
+	  roomDimensions[1] = this.srng.random_integer(5,7);
 	}
 	// Vertical
 	else {
-	  roomDimensions[0] = this.srng.random_integer(4,6);
+	  roomDimensions[0] = this.srng.random_integer(5,7);
 	  roomDimensions[1] = this.srng.random_integer(10,20);
 	}
       }
@@ -336,7 +336,7 @@ class Procgen_RoomPlacement {
   }
 
   _generate_hallways() {
-
+    
   }
 
   _modify_saturn() {
@@ -373,7 +373,7 @@ class Procgen_RoomPlacement {
 
 
 // BEGIN
-let srng = new SeededRandomNumberGenerator("Test");
+let srng = new SeededRandomNumberGenerator("Test4");
 let dist = {
   Head: 2,
   Chest: 3,
