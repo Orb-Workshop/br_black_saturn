@@ -377,10 +377,7 @@ class RoomPlacement {
     this.ceiling_height = options.ceiling_height ||
       RP_DEFAULT_CEILING_HEIGHT;
     this.num_rooms = options.num_rooms || RP_DEFAULT_NUM_ROOMS;
-
-    //
     this.placed_rooms = [];
-    this.placed_hallways = [];
     
     return this;
   }
@@ -453,10 +450,6 @@ class RoomPlacement {
     return this;
   }
 
-  _generateHallways() {
-    
-  }
-
   _modifySaturn() {
     this.saturn.forEachIndex((i,j,k) => {
       if (this.isInRoomBorder(i,j,k)) {
@@ -495,14 +488,14 @@ class RoomPlacement {
     return bCollision;
   }
 
+  getPlacedRooms() { return this.placed_rooms; }
+
   process() {
     this._generateRooms();
-    this._generateHallways();
     this._modifySaturn();
-
+    
     return this;
   }
-  
 }
 
 // Animated BSP
@@ -702,7 +695,42 @@ class CellularAutomata {
   }
 }
 
+const BP_DEFAULT_BRIDGE_WIDTH = 4;
+class BridgePlacement {
+  constructor(procgen, options) {
+    this.procgen = procgen;
+    this.saturn = procgen.saturn;
+    this.options = options || {};
+    this.bridge_width = this.options.bridge_width || BP_DEFAULT_BRIDGE_WIDTH;
+    this.placed_bridges = [];
+  }
 
+  _getRoomOutlier() {
+    let placed_rooms = this.procgen.roomPlacement.getPlacedRooms();
+    let outlier_room = null;
+    let bOutlier = true;
+    for (let ri = 0; ri < placed_rooms.length; ri++) {
+      let room = placed_rooms[ri];
+      let getAt = (i, j) => this.saturn.getAt(i, j, 0);
+
+      //top-left -- top-right
+      //bot-left -- bot-right
+      for (let i = room.x; i < (room.x+room.w); i++) {
+
+      }
+
+      //top-left  -- bot-left
+      //top-right -- bot-right
+      for (let j = room.y; j < (room.y+room.h); j++) {
+	
+      }
+    }
+  }
+
+  process() {
+    
+  }
+}
 
 // Drunkard's Walk
 // Diffusion Limited Aggregation
@@ -755,11 +783,9 @@ class ProcGen {
 }
 
 
-
 //
 // BEGIN
 //
-
 
 
 let srng = new SeededRandomNumberGenerator("Test4");
@@ -778,12 +804,15 @@ let procgen = new ProcGen(null, {
   },
   CellularAutomata: {
     Splotch: {
-      cycles: 40,
+      cycles: 25
     },
     Solidify: {
       cycles: 2,
       threshold: 5,
     },
+  },
+  BridgePlacement: {
+    bridge_width: 4,
   },
 })
 .process()
