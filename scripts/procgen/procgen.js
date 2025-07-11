@@ -186,7 +186,7 @@ class Saturn {
     this.elements = [];
     this.forEachIndex((i, j, k) => {
       this.elements.push({
-        fill: false,
+        type: "empty",
       });
     });
 
@@ -256,11 +256,15 @@ class Saturn {
   }
 
   fill(x, y, z) {
-    this.getAt(x, y, z).fill = true;
+    this.getAt(x, y, z).type = "fill";
   }
 
   unfill(x, y, z) {
-    this.getAt(x, y, z).fill = false;
+    this.getAt(x, y, z).type = "empty";
+  }
+
+  floor(x, y, z) {
+    this.getAt(x, y, z).type = "floor";
   }
 
   // Only displays the first z-plane, [i, j, 0]
@@ -269,8 +273,11 @@ class Saturn {
     for (let j = 0; j < this.height(); j++) {
       for (let i = 0; i < this.width(); i++) {
 	let element = this.getAt(i,j,0);
-	if (element.fill) {
+	if (element.type == "fill") {
 	  s += "X";
+	}
+	else if (element.type == "floor") {
+	  s += ".";
 	}
 	else {
 	  s += " ";
@@ -294,7 +301,6 @@ class Saturn {
 //
 
 
-const RP_DEFAULT_BORDER_WIDTH = 1;
 const RP_DEFAULT_HALLWAY_WIDTH = 3;
 const RP_DEFAULT_CEILING_HEIGHT = 4;
 const RP_DEFAULT_NUM_ROOMS = 6;
@@ -308,7 +314,6 @@ class RoomPlacement {
       SmallRoom: 50,
       LongRoom: 10,
     };
-    this.borderWidth = options.borderWidth || RP_DEFAULT_BORDER_WIDTH;
     this.hallwayWidth = options.hallwayWidth || RP_DEFAULT_HALLWAY_WIDTH;
     this.ceilingHeight = options.ceilingHeight || RP_DEFAULT_CEILING_HEIGHT;
     this.numRooms = options.numRooms || RP_DEFAULT_NUM_ROOMS;
@@ -387,17 +392,38 @@ class RoomPlacement {
   }
 
   _modify_saturn() {
-    console.log(this.placedRooms);
     this.saturn.forEachIndex((i,j,k) => {
-      this.placedRooms.map((placedRoom) => {
-	if ((i == placedRoom.x || i == (placedRoom.x + placedRoom.w-1)) &&
-	    (j >= placedRoom.y && j <= (placedRoom.y + placedRoom.h-1)) ||
-	    (j == placedRoom.y || j == (placedRoom.y + placedRoom.h-1)) &&
-	    (i >= placedRoom.x && i <= (placedRoom.x + placedRoom.w-1))) {
-	  this.saturn.getAt(i, j, k).fill = true;
-	}
-      });
+      if (this.isInRoomBorder(i,j,k)) {
+	this.saturn.fill(i, j, k);
+      }
+      if (this.isInRoom(i,j,k)) {
+	this.saturn.floor(i,j,k);
+      }
     });
+  }
+
+  isInRoom(x, y, z) {
+    let bCollision = false;
+    this.placedRooms.map((placedRoom) => {
+      if ((x >= placedRoom.x+1 && x <= (placedRoom.x + placedRoom.w-2)) &&
+	  (y >= placedRoom.y+1 && y <= (placedRoom.y + placedRoom.h-2))) {
+	bCollision = true;
+      }
+    });
+    return bCollision;
+  }
+
+  isInRoomBorder(x, y, z) {
+    let bCollision = false;
+    this.placedRooms.map((placedRoom) => {
+      if ((x == placedRoom.x || x == (placedRoom.x + placedRoom.w-1)) &&
+	  (y >= placedRoom.y && y <= (placedRoom.y + placedRoom.h-1)) ||
+	  (y == placedRoom.y || y == (placedRoom.y + placedRoom.h-1)) &&
+	  (x >= placedRoom.x && x <= (placedRoom.x + placedRoom.w-1))) {
+	bCollision = true;
+      }
+    });
+    return bCollision;
   }
 
   process() {
@@ -416,12 +442,17 @@ class RoomPlacement {
 // Cellular Automata
 //
 
+const CA_SPLOTCH_CYCLE = 100; //cycles
 class CellularAutomata {
   constructor(procgen, options) {
     this.procgen = procgen;
     this.saturn = procgen.saturn;
     this.srng = procgen.srng;
     this.options = options || {};
+  }
+
+  _splotch_wave() {
+    
   }
 
   process() {
@@ -472,6 +503,7 @@ class ProcGen {
   }
 
   display2d() {
+    console.log(this.roomPlacement.placedRooms);
     console.log("Seed: " + this.seed);
     this.saturn.display2d();
     return this;
@@ -490,10 +522,8 @@ let dist = {
 let gen = () => { return srng.random_distribution(dist); };
 let coinFlip = () => { return srng.random_normal(0.5); };
 
-console.log("Random Seed: " + RandomSeed());
-console.log("-".charCodeAt(0));
 
-let procgen = new ProcGen(null, {
+let procgen = new ProcGen("Delta-881", {
   RoomPlacement: {
     numRooms: 6,
   },
