@@ -633,14 +633,14 @@ class SplotchSystem {
   }
 }
 
-const CA_SOLIDIFY_CYCLES = 1;
-const CA_SOLID_THRESHOLD = 4;
+const CA_SOLID_CYCLES = 2;
+const CA_SOLID_THRESHOLD = 5;
 class SolidifySystem {
   constructor(procgen, options) {
     this.procgen = procgen;
     this.saturn = procgen.saturn;
     this.options = options || {};
-    this.cycles = options.cycles || CA_SOLIDIFY_CYCLES;
+    this.cycles = options.cycles || CA_SOLID_CYCLES;
     this.threshold = options.threshold || CA_SOLID_THRESHOLD;
 
     return this;
@@ -748,7 +748,6 @@ class ProcGen {
   }
 
   display2d() {
-    console.log(this.roomPlacement.placed_rooms);
     console.log("Seed: " + this.seed);
     this.saturn.display2d();
     return this;
