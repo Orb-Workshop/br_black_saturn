@@ -1,4 +1,4 @@
-//@ts-nocheck
+ //@ts-nocheck
 //
 // Procedural Generation Library
 //
@@ -101,7 +101,7 @@ class SeededRandomNumberGenerator {
 			   this.hashed_seed[2], this.hashed_seed[3]);
   }
 
-  _get_distribution(tupl, norm_factor) {
+  _getDistribution(tupl, norm_factor) {
     let dist = [];
     let cstart = 0;
     for (let i = 0; i < tupl.length; i++) {
@@ -123,7 +123,7 @@ class SeededRandomNumberGenerator {
       Chest: 3,
       Legs: 1,
     }
-    let gen = () => { return srng.random_distribution(dist); };
+    let gen = () => { return srng.randomDistribution(dist); };
     console.log(gen()); // Head
     console.log(gen()); // Head
     console.log(gen()); // Legs
@@ -133,7 +133,7 @@ class SeededRandomNumberGenerator {
     */
 
   // Get random distribution based on tuple 
-  random_distribution(o) {
+  randomDistribution(o) {
     let tupl = [];
     for (const [k, v] of Object.entries(o)) {
       tupl.push([k, v]);
@@ -143,7 +143,7 @@ class SeededRandomNumberGenerator {
     }, 0);
 
     let norm_factor = this.total_distribution / percent_total;
-    let distribution = this._get_distribution(tupl, norm_factor);
+    let distribution = this._getDistribution(tupl, norm_factor);
     let rpos = this.generator() * this.total_distribution;
     return distribution.find((tupl) => {
       let cstart = tupl[0];
@@ -157,15 +157,15 @@ class SeededRandomNumberGenerator {
   /*
     Examples
     let srng = new SeededRandomNumberGenerator("Test");
-    let coinFlip = () => { return srng.random_chance(0.5); };
+    let coinFlip = () => { return srng.randomChance(0.5); };
     let quarter = () => { return coinFlip() && coinFlip(); };
-    let deca = () => { return srng.random_chance(0.1); };
+    let deca = () => { return srng.randomChance(0.1); };
   */
-  random_chance(norm) {
+  randomChance(norm) {
     return (this.generator() <= norm);
   }
 
-  random_float(start, end) {
+  randomFloat(start, end) {
     if (end === undefined) {
       end = start || 1;
       start = 0;
@@ -174,8 +174,8 @@ class SeededRandomNumberGenerator {
     return result;
   }
 
-  random_integer(start, end) {
-    return Math.round(this.random_float(start, end));
+  randomInteger(start, end) {
+    return Math.round(this.randomFloat(start, end));
   }
 }
 
@@ -189,7 +189,7 @@ class SeededRandomNumberGenerator {
 // y z
 // |  \
 // |   \
-// +    +
+// +    -
 
 let SaturnDimensions = [6, 6];       // [Width, Height]
 let CubeDimensions = [8, 8, 8];      // [Width, Height, Depth]
@@ -197,7 +197,11 @@ let ElementDimensions = [48, 48, 8];
 
 // Individual Elements that make up Saturn
 class SaturnElement {
-  constructor(saturn) {
+  constructor(saturn, x, y, z) {
+    this.saturn = saturn;
+    this.x = x;
+    this.y = y;
+    this.z = z;
     this.type = "empty";
   }
 
@@ -214,12 +218,19 @@ class SaturnElement {
   floor(x, y, z) {
     this.type = "floor";
   }
+
+  getParentCube() {
+    return this.saturn.getCubeFromElement(this.x, this.y, this.z);
+  }
 }
 
 // Individual Cube Elements that make up Saturn's Cube.
 class SaturnCubeElement {
-  constructor(saturn) {
-    this.playerSpawn = false;
+  constructor(saturn, x, y) {
+    this.saturn = saturn;
+    this.x = x;
+    this.y = y;
+    this.player_spawn = false;
   }
 }
 
@@ -229,7 +240,7 @@ class SaturnCube {
     this.saturn = saturn;
     this.elements = [];
     this.forEachIndex((i, j) => {
-      this.elements.push(new SaturnCubeElement(this.saturn));
+      this.elements.push(new SaturnCubeElement(this.saturn, i, j));
     });
   }
 
@@ -266,7 +277,7 @@ class Saturn {
     // Populate Elements
     this.elements = [];
     this.forEachIndex((i, j, k) => {
-      this.elements.push(new SaturnElement(this));
+      this.elements.push(new SaturnElement(this, i, j, k));
     });
 
     // Populate Cubes
@@ -303,7 +314,7 @@ class Saturn {
     return this.elements[idx];
   }
 
-  // Get the parent cube to the element that comprises it.
+  // Get the parent cube based on an element index.
   getCubeFromElement(x, y, z) {
     let cubeX = Math.floor(x / this.cubes.width());
     let cubeY = Math.floor(y / this.cubes.height());
@@ -335,9 +346,7 @@ class Saturn {
 
 
 /*
-  
   Procedural Generation Strategies
-
  */
 
 
@@ -360,52 +369,55 @@ class RoomPlacement {
       SmallRoom: 50,
       LongRoom: 10,
     };
-    this.hallwayWidth = options.hallwayWidth || RP_DEFAULT_HALLWAY_WIDTH;
-    this.ceilingHeight = options.ceilingHeight || RP_DEFAULT_CEILING_HEIGHT;
-    this.numRooms = options.numRooms || RP_DEFAULT_NUM_ROOMS;
+    this.hallway_width = options.hallway_width ||
+      RP_DEFAULT_HALLWAY_WIDTH;
+    this.ceiling_height = options.ceiling_height ||
+      RP_DEFAULT_CEILING_HEIGHT;
+    this.num_rooms = options.num_rooms || RP_DEFAULT_NUM_ROOMS;
 
     //
-    this.placedRooms = [];
+    this.placed_rooms = [];
     this.placedHallways = [];
   }
 
   // Generate Room Placement
-  _generate_rooms() {
-    while (this.placedRooms.length < this.numRooms) {
-      let layout_type = this.srng.random_distribution(this.layout_distribution);
-      let roomDimensions = [0, 0];
+  _generateRooms() {
+    while (this.placed_rooms.length < this.num_rooms) {
+      let layout_type = this.srng.randomDistribution(this.layout_distribution);
+      let room_dimensions = [0, 0];
       if (layout_type == "BigRoom") {
-	roomDimensions[0] = this.srng.random_integer(10,20);
-	roomDimensions[1] = this.srng.random_integer(10,20);
+	room_dimensions[0] = this.srng.randomInteger(10,20);
+	room_dimensions[1] = this.srng.randomInteger(10,20);
       }
       else if (layout_type == "SmallRoom") {
-	roomDimensions[0] = this.srng.random_integer(5,10);
-	roomDimensions[1] = this.srng.random_integer(5,10);
+	room_dimensions[0] = this.srng.randomInteger(5,10);
+	room_dimensions[1] = this.srng.randomInteger(5,10);
       }
       else if (layout_type == "LongRoom") {
 	// Horizontal
-	if (this.srng.random_chance(0.5)) {
-	  roomDimensions[0] = this.srng.random_integer(10,20);
-	  roomDimensions[1] = this.srng.random_integer(5,7);
+	if (this.srng.randomChance(0.5)) {
+	  room_dimensions[0] = this.srng.randomInteger(10,20);
+	  room_dimensions[1] = this.srng.randomInteger(5,7);
 	}
 	// Vertical
 	else {
-	  roomDimensions[0] = this.srng.random_integer(5,7);
-	  roomDimensions[1] = this.srng.random_integer(10,20);
+	  room_dimensions[0] = this.srng.randomInteger(5,7);
+	  room_dimensions[1] = this.srng.randomInteger(10,20);
 	}
       }
 
-      // Get Starting X and Y positions to place the top-left corner of the room.
-      let roomPosition = [
-	this.srng.random_integer(this.saturn.width()-1),
-	this.srng.random_integer(this.saturn.height()-1),
+      // Get Starting X and Y positions to place the top-left corner
+      // of the room.
+      let room_position = [
+	this.srng.randomInteger(this.saturn.width()-1),
+	this.srng.randomInteger(this.saturn.height()-1),
       ];
       
       let room = {
-	x: roomPosition[0],
-	y: roomPosition[1],
-	w: roomDimensions[0],
-	h: roomDimensions[1],
+	x: room_position[0],
+	y: room_position[1],
+	w: room_dimensions[0],
+	h: room_dimensions[1],
       };
 
       // Check if the room is within the world bounds.
@@ -415,29 +427,31 @@ class RoomPlacement {
       
       // Check if it can co-exist with other placed rooms
       let bCollision = false;
-      for (let i = 0; i < this.placedRooms.length; i++) {
-	let placedRoom = this.placedRooms[i];
+      for (let i = 0; i < this.placed_rooms.length; i++) {
+	let placed_room = this.placed_rooms[i];
 	// BB Checks
 
 	// x-overlap
-	if ((room.x + room.w) < placedRoom.x || room.x > (placedRoom.x + placedRoom.w))
+	if ((room.x + room.w) < placed_room.x ||
+	    room.x > (placed_room.x + placed_room.w))
 	  continue;
 
 	// y-overlap
-	if ((room.y + room.h) < placedRoom.y || room.y > (placedRoom.y + placedRoom.h))
+	if ((room.y + room.h) < placed_room.y ||
+	    room.y > (placed_room.y + placed_room.h))
 	  continue;
 
 	bCollision = true;
       }
-      if (!bCollision) this.placedRooms.push(room);
+      if (!bCollision) this.placed_rooms.push(room);
     }
   }
 
-  _generate_hallways() {
+  _generateHallways() {
     
   }
 
-  _modify_saturn() {
+  _modifySaturn() {
     this.saturn.forEachIndex((i,j,k) => {
       if (this.isInRoomBorder(i,j,k)) {
 	this.saturn.getAt(i, j, k).fill();
@@ -451,9 +465,9 @@ class RoomPlacement {
 
   isInRoom(x, y, z) {
     let bCollision = false;
-    this.placedRooms.map((placedRoom) => {
-      if ((x >= placedRoom.x+1 && x <= (placedRoom.x + placedRoom.w-2)) &&
-	  (y >= placedRoom.y+1 && y <= (placedRoom.y + placedRoom.h-2))) {
+    this.placed_rooms.map((placed_room) => {
+      if ((x >= placed_room.x+1 && x <= (placed_room.x + placed_room.w-2)) &&
+	  (y >= placed_room.y+1 && y <= (placed_room.y + placed_room.h-2))) {
 	bCollision = true;
       }
     });
@@ -462,11 +476,11 @@ class RoomPlacement {
 
   isInRoomBorder(x, y, z) {
     let bCollision = false;
-    this.placedRooms.map((placedRoom) => {
-      if ((x == placedRoom.x || x == (placedRoom.x + placedRoom.w-1)) &&
-	  (y >= placedRoom.y && y <= (placedRoom.y + placedRoom.h-1)) ||
-	  (y == placedRoom.y || y == (placedRoom.y + placedRoom.h-1)) &&
-	  (x >= placedRoom.x && x <= (placedRoom.x + placedRoom.w-1))) {
+    this.placed_rooms.map((placed_room) => {
+      if ((x == placed_room.x || x == (placed_room.x + placed_room.w-1)) &&
+	  (y >= placed_room.y && y <= (placed_room.y + placed_room.h-1)) ||
+	  (y == placed_room.y || y == (placed_room.y + placed_room.h-1)) &&
+	  (x >= placed_room.x && x <= (placed_room.x + placed_room.w-1))) {
 	bCollision = true;
       }
     });
@@ -474,9 +488,9 @@ class RoomPlacement {
   }
 
   process() {
-    this._generate_rooms();
-    this._generate_hallways();
-    this._modify_saturn();
+    this._generateRooms();
+    this._generateHallways();
+    this._modifySaturn();
     return this;
   }
   
@@ -489,7 +503,19 @@ class RoomPlacement {
 // Cellular Automata
 //
 
-const CA_SPLOTCH_CYCLE = 100; //cycles
+class CASplotch {
+  constructor(procgen, x, y) {
+    this.procgen = procgen;
+    this.x = x;
+    this.y = y;
+  }
+
+  tick() {
+    
+  }
+}
+
+const CA_SPLOTCH_CYCLE = 10; //cycles
 class CellularAutomata {
   constructor(procgen, options) {
     this.procgen = procgen;
@@ -497,12 +523,14 @@ class CellularAutomata {
     this.srng = procgen.srng;
     this.options = options || {};
   }
-  
+
   _splotch_wave(x, y, options) {
     options = options || {};
-    let cycles = options.cycles || 100;
+    let cycles = options.cycles || CA_SPLOTCH_CYCLE;
     //We take into account the RoomPlacement (Stage 1)
-    let starting_rect = {x: x, y: y, w: 1, h: 1};
+    let roomPlacement = this.procgen.roomPlacement;
+
+    let splotch_listing = [new CASplotch(this.procgen, 24, 24)];
     for (let ic = 0; ic < cycles; ic++) {
       
     }
@@ -559,7 +587,7 @@ class ProcGen {
   }
 
   display2d() {
-    console.log(this.roomPlacement.placedRooms);
+    console.log(this.roomPlacement.placed_rooms);
     console.log("Seed: " + this.seed);
     this.saturn.display2d();
     return this;
@@ -580,13 +608,13 @@ let dist = {
   Chest: 3,
   Legs: 1,
 };
-let gen = () => { return srng.random_distribution(dist); };
-let coinFlip = () => { return srng.random_chance(0.5); };
+let gen = () => { return srng.randomDistribution(dist); };
+let coinFlip = () => { return srng.randomChance(0.5); };
 
 
 let procgen = new ProcGen("Delta-881", {
   RoomPlacement: {
-    numRooms: 6,
+    num_rooms: 6,
   },
   CellularAutomata: {
     
