@@ -251,10 +251,10 @@ const RP_DEFAULT_BORDER_WIDTH = 1;
 const RP_DEFAULT_HALLWAY_WIDTH = 3;
 const RP_DEFAULT_CEILING_HEIGHT = 4;
 const RP_DEFAULT_NUM_ROOMS = 6;
-class Procgen_RoomPlacement {
-  constructor(srng, saturn, options) {
-    this.srng = srng;
-    this.saturn = saturn;
+class RoomPlacement {
+  constructor(procgen, options) {
+    this.srng = procgen.srng;
+    this.saturn = procgen.saturn;
     this.options = options || {};
     this.layout_distribution = options.layout_distribution || {
       BigRoom: 20,
@@ -363,13 +363,66 @@ class Procgen_RoomPlacement {
 }
 
 // Animated BSP
+// skip...
+
 // Cellular Automata
+class CellularAutomata {
+  constructor(procgen, options) {
+    this.procgen = procgen;
+    this.saturn = procgen.saturn;
+    this.srng = procgen.srng;
+    this.options = options || {};
+  }
+
+  process() {
+    
+  }
+}
+
+
 // Drunkard's Walk
 // Diffusion Limited Aggregation
 // Centralized DLA
+
+
+
 // Voronoi Diagrams
 // Perlin or Simplex Noise
+
+
 // Combine Techniques...
+class ProcGen {
+  constructor(seed, options) {
+    this.seed = seed || "test";
+    this.options = options || {};
+    this.srng = new SeededRandomNumberGenerator(seed);
+    this.saturn = new Saturn();
+
+    // ProcGen Strategies
+    this.roomPlacement = new RoomPlacement(
+      this,
+      this.options.RoomPlacement,
+    );
+
+    this.cellularAutomata = new CellularAutomata(
+      this,
+      this.options.CellularAutomata,
+    );
+
+    return this;
+  }
+
+  process() {
+    this.roomPlacement.process();
+    return this;
+  }
+
+  display2d() {
+    this.saturn.display2d();
+    return this;
+  }
+}
+
 
 
 // BEGIN
@@ -381,17 +434,14 @@ let dist = {
 };
 let gen = () => { return srng.random_distribution(dist); };
 let coinFlip = () => { return srng.random_normal(0.5); };
-let saturn = new Saturn();
-let procgen_roomPlacement = new Procgen_RoomPlacement(
-  srng, saturn, {
+
+let procgen = new ProcGen("test", {
+  RoomPlacement: {
     numRooms: 6,
-  }).process();
-
-
-
-saturn.forEachIndex((i, j, k) => {
-  if (k > 0) return;
-  //if (coinFlip()) saturn.fill(i,j,k);
-});
-
-saturn.display2d();
+  },
+  CellularAutomata: {
+    
+  },
+})
+.process()
+.display2d();
