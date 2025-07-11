@@ -1,7 +1,52 @@
-/* Procedural Generation Library */
+//@ts-nocheck
+//
+// Procedural Generation Library
+//
 
-// https://stackoverflow.com/questions/521295/seeding-the-random-number-generator-in-javascript
-// Seeded Random Generator
+/*
+   Unseeded Random Generator
+*/
+function RandomInteger(start, end) {
+  if (end === undefined) {
+    end = start;
+    start = 0;
+  }
+  let rf = Math.random() * (end - start) + start;
+  return Math.round(rf);
+}
+
+function RandomWord() {
+  let word_array = [
+    "Alfa","Bravo","Charlie",
+    "Delta","Echo","Foxtrot",
+    "Golf", "Hotel", "India",
+    "Juliet", "Kilo", "Lima",
+    "Mike", "November", "Orb",
+    "Papa", "Quebec", "Romeo",
+    "Sierra", "Tango", "Uniform",
+    "Victor", "Whiskey", "Xray",
+    "Yankee", "Zulu",
+  ];
+  let random_index = RandomInteger(word_array.length-1);
+  return word_array[random_index];
+}
+
+function RandomSeed() {
+  let s = RandomWord() + "-";
+  for (let i = 0; i < 3; i++)
+    s += RandomInteger(0,9);
+  return s;
+}
+
+
+/*
+
+   Seeded Random Generator
+
+   Notes:
+   - https://stackoverflow.com/questions/521295/seeding-the-random-number-generator-in-javascript
+
+*/ 
 
 // Pad the input seed into a hashed value
 function cyrb128(str) {
@@ -81,8 +126,6 @@ class SeededRandomNumberGenerator {
     console.log(gen()); // Chest
     console.log(gen()); // Chest
     console.log(gen()); // Chest
-
-    // actual output varies by seed.
     */
 
   // Get random distribution based on tuple 
@@ -246,7 +289,11 @@ class Saturn {
  */
 
 
+//
 // Room Placement
+//
+
+
 const RP_DEFAULT_BORDER_WIDTH = 1;
 const RP_DEFAULT_HALLWAY_WIDTH = 3;
 const RP_DEFAULT_CEILING_HEIGHT = 4;
@@ -365,7 +412,10 @@ class RoomPlacement {
 // Animated BSP
 // skip...
 
+//
 // Cellular Automata
+//
+
 class CellularAutomata {
   constructor(procgen, options) {
     this.procgen = procgen;
@@ -393,12 +443,16 @@ class CellularAutomata {
 // Combine Techniques...
 class ProcGen {
   constructor(seed, options) {
-    this.seed = seed || "test";
+    this.seed = seed || RandomSeed();
     this.options = options || {};
-    this.srng = new SeededRandomNumberGenerator(seed);
+    this.srng = new SeededRandomNumberGenerator(this.seed);
     this.saturn = new Saturn();
 
+    //
     // ProcGen Strategies
+    //
+
+    
     this.roomPlacement = new RoomPlacement(
       this,
       this.options.RoomPlacement,
@@ -418,6 +472,7 @@ class ProcGen {
   }
 
   display2d() {
+    console.log("Seed: " + this.seed);
     this.saturn.display2d();
     return this;
   }
@@ -435,7 +490,10 @@ let dist = {
 let gen = () => { return srng.random_distribution(dist); };
 let coinFlip = () => { return srng.random_normal(0.5); };
 
-let procgen = new ProcGen("test", {
+console.log("Random Seed: " + RandomSeed());
+console.log("-".charCodeAt(0));
+
+let procgen = new ProcGen(null, {
   RoomPlacement: {
     numRooms: 6,
   },
