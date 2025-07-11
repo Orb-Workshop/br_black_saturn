@@ -206,21 +206,22 @@ class SaturnElement {
   }
 
   getType() { return this.type; }
+  getParentCube() {
+    return this.saturn.getCubeFromElement(this.x, this.y, this.z);
+  }
 
-  fill(x, y, z) {
+  fill() {
     this.type = "fill";
   }
 
-  unfill(x, y, z) {
+  empty() {
     this.type = "empty";
   }
 
-  floor(x, y, z) {
-    this.type = "floor";
-  }
+  isEmpty() { return (this.type == "empty"); }
 
-  getParentCube() {
-    return this.saturn.getCubeFromElement(this.x, this.y, this.z);
+  floor() {
+    this.type = "floor";
   }
 }
 
@@ -377,7 +378,9 @@ class RoomPlacement {
 
     //
     this.placed_rooms = [];
-    this.placedHallways = [];
+    this.placed_hallways = [];
+    
+    return this;
   }
 
   // Generate Room Placement
@@ -445,6 +448,7 @@ class RoomPlacement {
       }
       if (!bCollision) this.placed_rooms.push(room);
     }
+    return this;
   }
 
   _generateHallways() {
@@ -461,6 +465,8 @@ class RoomPlacement {
 	if (k == 0) element.floor();
       }
     });
+
+    return this;
   }
 
   isInRoom(x, y, z) {
@@ -491,6 +497,7 @@ class RoomPlacement {
     this._generateRooms();
     this._generateHallways();
     this._modifySaturn();
+
     return this;
   }
   
@@ -503,41 +510,136 @@ class RoomPlacement {
 // Cellular Automata
 //
 
-class CASplotch {
+class SplotchCell {
   constructor(procgen, x, y) {
     this.procgen = procgen;
+    this.saturn = this.procgen.saturn;
+    this.splotchSystem = procgen.cellularAutomata.splotchSystem;
     this.x = x;
     this.y = y;
+
+    return this;
   }
 
   tick() {
-    
+    let looky_distribution = {
+      up: 1,
+      right: 1,
+      down: 1,
+      left: 1,
+    };
+    let looky = this.procgen.srng.randomDistribution(looky_distribution);
+    if (looky == "up") {
+      if (this.y == 0) return [];
+      if (this.splotchSystem.seek(this.x, this.y-1)) return [];
+      if (!this.saturn.getAt(this.x, this.y-1, 0).isEmpty()) return [];
+      return [new SplotchCell(this.procgen, this.x, this.y-1)];
+    }
+    else if (looky == "right") {
+      if (this.x == this.saturn.width()-1) return [];
+      if (this.splotchSystem.seek(this.x+1, this.y)) return [];
+      if (!this.saturn.getAt(this.x+1, this.y, 0).isEmpty()) return [];
+      return [new SplotchCell(this.procgen, this.x+1, this.y)];
+    }
+    else if (looky == "down") {
+      if (this.y == this.saturn.height()-1) return [];
+      if (this.splotchSystem.seek(this.x, this.y+1)) return [];
+      if (!this.saturn.getAt(this.x, this.y+1, 0).isEmpty()) return [];
+      return [new SplotchCell(this.procgen, this.x, this.y+1)];
+    }
+    else if (looky == "left") {
+      if (this.x == 0) return [];
+      if (this.splotchSystem.seek(this.x-1, this.y)) return [];
+      if (!this.saturn.getAt(this.x-1, this.y, 0).isEmpty()) return [];
+      return [new SplotchCell(this.procgen, this.x-1, this.y)];
+    }
+    return [];
   }
 }
 
 const CA_SPLOTCH_CYCLE = 10; //cycles
+class SplotchSystem {
+  constructor(procgen, options) {
+    options = options || {};
+    this.procgen = procgen;
+    this.saturn = procgen.saturn;
+    this.srng = procgen.srng;
+    this.cycles = options.cycles || CA_SPLOTCH_CYCLE;
+    this.splotch_listing = [];
+
+    return this;
+  }
+
+  _generateStartingPoint() {
+    let starting_point = null;
+    let lower_bound_x = Math.floor(this.saturn.width() / 4);
+    let upper_bound_x = Math.floor(this.saturn.width() / 4) * 3;
+    let lower_bound_y = Math.floor(this.saturn.height() / 4);
+    let upper_bound_y = Math.floor(this.saturn.height() / 4) * 3;
+    
+    while(starting_point === null) {
+      let xpos = this.srng.randomInteger(lower_bound_x, upper_bound_x);
+      let ypos = this.srng.randomInteger(lower_bound_y, upper_bound_y);
+      if (this.saturn.getAt(xpos, ypos, 0).isEmpty()) {
+	starting_point = [xpos, ypos];
+	break;
+      }
+    }
+
+    return starting_point;
+  }
+
+  _wave(x, y) {
+    this.splotch_listing.push(new SplotchCell(this.procgen, x, y));
+    for (let ic = 0; ic < this.cycles; ic++) {
+      let spawn_wave = this.splotch_listing.reduce((acc, splotch) => {
+	let siblings = splotch.tick() || [];
+	return acc.concat(siblings);
+      }, []);
+      this.splotch_listing = this.splotch_listing.concat(spawn_wave);
+    }
+  }
+
+  _modifySaturn() {
+    let saturn = this.procgen.saturn;
+    this.splotch_listing.map((splotch) => {
+      saturn.getAt(splotch.x, splotch.y, 0).floor();
+    });
+  }
+
+  seek(x, y) {
+    return this.splotch_listing.find((splotch) => {
+      return (splotch.x == x && splotch.y == y);
+    });
+  }
+
+  process() {
+    let starting_point = this._generateStartingPoint();
+    let xpos = starting_point[0];
+    let ypos = starting_point[1];
+
+    this._wave(xpos, ypos);
+    this._modifySaturn();
+
+    return this;
+  }
+}
+
 class CellularAutomata {
   constructor(procgen, options) {
     this.procgen = procgen;
     this.saturn = procgen.saturn;
     this.srng = procgen.srng;
     this.options = options || {};
+    this.splotchSystem = new SplotchSystem(procgen, this.options.Splotch || {});
+
+    return this;
   }
 
-  _splotch_wave(x, y, options) {
-    options = options || {};
-    let cycles = options.cycles || CA_SPLOTCH_CYCLE;
-    //We take into account the RoomPlacement (Stage 1)
-    let roomPlacement = this.procgen.roomPlacement;
-
-    let splotch_listing = [new CASplotch(this.procgen, 24, 24)];
-    for (let ic = 0; ic < cycles; ic++) {
-      
-    }
-  }
-  
   process() {
-    
+    this.splotchSystem.process();
+
+    return this;
   }
 }
 
@@ -617,7 +719,9 @@ let procgen = new ProcGen("Delta-881", {
     num_rooms: 6,
   },
   CellularAutomata: {
-    
+    Splotch: {
+      cycles: 10,
+    },
   },
 })
 .process()
