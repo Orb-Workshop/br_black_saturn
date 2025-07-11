@@ -223,6 +223,8 @@ class SaturnElement {
   floor() {
     this.type = "floor";
   }
+
+  isFloor() { return (this.type == "floor"); }
 }
 
 // Individual Cube Elements that make up Saturn's Cube.
@@ -631,6 +633,56 @@ class SplotchSystem {
   }
 }
 
+const CA_SOLIDIFY_CYCLES = 1;
+const CA_SOLID_THRESHOLD = 4;
+class SolidifySystem {
+  constructor(procgen, options) {
+    this.procgen = procgen;
+    this.saturn = procgen.saturn;
+    this.options = options || {};
+    this.cycles = options.cycles || CA_SOLIDIFY_CYCLES;
+    this.threshold = options.threshold || CA_SOLID_THRESHOLD;
+
+    return this;
+  }
+
+  _tick() {
+    this.saturn.forEachIndex((i,j,k) => {
+      if (k != 0 ||
+	  i <= 0 ||
+	  j <= 0 ||
+	  i >= this.saturn.width()-1 ||
+	  j >= this.saturn.height()-1) return;
+      let getAt = (i,j) => this.saturn.getAt(i,j,0);
+      let solid_count = 0; // Adjacent walls have double weight.
+      if (!getAt(i,j+1).isEmpty()) solid_count += 2;
+      if (!getAt(i+1,j+1).isEmpty()) solid_count += 1;
+      if (!getAt(i+1,j).isEmpty()) solid_count += 2;
+      if (!getAt(i+1,j-1).isEmpty()) solid_count += 1;
+      if (!getAt(i,j-1).isEmpty()) solid_count += 2;
+      if (!getAt(i-1,j-1).isEmpty()) solid_count += 1;
+      if (!getAt(i-1,j).isEmpty()) solid_count += 2;
+      if (!getAt(i-1,j+1).isEmpty()) solid_count += 1;
+
+      let element = getAt(i,j);
+      if (solid_count < this.threshold && element.isFloor())
+	element.empty();
+      if (solid_count >= this.threshold && element.isEmpty())
+	element.floor();
+    });
+
+    return this;
+  }
+
+  process() {
+    for (let i = 0; i < this.cycles; i++) {
+      this._tick();
+    }
+
+    return this;
+  }
+}
+
 class CellularAutomata {
   constructor(procgen, options) {
     this.procgen = procgen;
@@ -638,13 +690,14 @@ class CellularAutomata {
     this.srng = procgen.srng;
     this.options = options || {};
     this.splotchSystem = new SplotchSystem(procgen, this.options.Splotch || {});
+    this.solidifySystem = new SolidifySystem(procgen, this.options.Solidify || {});
 
     return this;
   }
 
   process() {
     this.splotchSystem.process();
-
+    this.solidifySystem.process();
     return this;
   }
 }
@@ -727,6 +780,10 @@ let procgen = new ProcGen(null, {
   CellularAutomata: {
     Splotch: {
       cycles: 40,
+    },
+    Solidify: {
+      cycles: 2,
+      threshold: 5,
     },
   },
 })
