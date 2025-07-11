@@ -522,11 +522,17 @@ class SplotchCell {
   }
 
   tick() {
+    // Heuristics to make the sploosh gravitate towards the center.
+    let right_incentive = (1 - (this.x / this.saturn.width())) * this.saturn.width();
+    let up_incentive = (1 - (this.y / this.saturn.height())) * this.saturn.height();
+    let left_incentive = this.saturn.width() - right_incentive;
+    let down_incentive = this.saturn.height() - up_incentive;
+
     let looky_distribution = {
-      up: 1,
-      right: 1,
-      down: 1,
-      left: 1,
+      up: up_incentive,
+      right: right_incentive,
+      down: down_incentive,
+      left: left_incentive,
     };
     let looky = this.procgen.srng.randomDistribution(looky_distribution);
     if (looky == "up") {
@@ -714,13 +720,13 @@ let gen = () => { return srng.randomDistribution(dist); };
 let coinFlip = () => { return srng.randomChance(0.5); };
 
 
-let procgen = new ProcGen("Delta-881", {
+let procgen = new ProcGen(null, {
   RoomPlacement: {
     num_rooms: 6,
   },
   CellularAutomata: {
     Splotch: {
-      cycles: 10,
+      cycles: 40,
     },
   },
 })
