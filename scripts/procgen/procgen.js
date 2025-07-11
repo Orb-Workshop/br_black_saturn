@@ -6,6 +6,8 @@
 /*
    Unseeded Random Generator
 */
+
+
 function RandomInteger(start, end) {
   if (end === undefined) {
     end = start;
@@ -40,13 +42,13 @@ function RandomSeed() {
 
 
 /*
-
    Seeded Random Generator
 
    Notes:
    - https://stackoverflow.com/questions/521295/seeding-the-random-number-generator-in-javascript
 
 */ 
+
 
 // Pad the input seed into a hashed value
 function cyrb128(str) {
@@ -67,6 +69,7 @@ function cyrb128(str) {
   return [h1>>>0, h2>>>0, h3>>>0, h4>>>0];
 }
 
+
 // Seeded Random Number Generator Algorithm
 function sfc32(a, b, c, d) {
   return function() {
@@ -80,6 +83,7 @@ function sfc32(a, b, c, d) {
     return (t >>> 0) / 4294967296;
   };
 }
+
 
 const DEFAULT_TOTAL_DISTRIBUTION = 10_000_000;
 class SeededRandomNumberGenerator {
@@ -153,11 +157,11 @@ class SeededRandomNumberGenerator {
   /*
     Examples
     let srng = new SeededRandomNumberGenerator("Test");
-    let coinFlip = () => { return srng.random_normal(0.5); };
+    let coinFlip = () => { return srng.random_chance(0.5); };
     let quarter = () => { return coinFlip() && coinFlip(); };
-    let deca = () => { return srng.random_normal(0.1); };
+    let deca = () => { return srng.random_chance(0.1); };
   */
-  random_normal(norm) {
+  random_chance(norm) {
     return (this.generator() <= norm);
   }
 
@@ -175,28 +179,98 @@ class SeededRandomNumberGenerator {
   }
 }
 
-// Saturn Phantom
+
+
+//
+// SATURN
+//
+
+//  x --+
+// y z
+// |  \
+// |   \
+// +    +
+
 let SaturnDimensions = [6, 6];       // [Width, Height]
 let CubeDimensions = [8, 8, 8];      // [Width, Height, Depth]
 let ElementDimensions = [48, 48, 8];
 
+// Individual Elements that make up Saturn
+class SaturnElement {
+  constructor(saturn) {
+    this.type = "empty";
+  }
+
+  getType() { return this.type; }
+
+  fill(x, y, z) {
+    this.type = "fill";
+  }
+
+  unfill(x, y, z) {
+    this.type = "empty";
+  }
+
+  floor(x, y, z) {
+    this.type = "floor";
+  }
+}
+
+// Individual Cube Elements that make up Saturn's Cube.
+class SaturnCubeElement {
+  constructor(saturn) {
+    this.playerSpawn = false;
+  }
+}
+
+// Handles the 'Cube' elements that comprise the map.
+class SaturnCube {
+  constructor(saturn) {
+    this.saturn = saturn;
+    this.elements = [];
+    this.forEachIndex((i, j) => {
+      this.elements.push(new SaturnCubeElement(this.saturn));
+    });
+  }
+
+  width() { return SaturnDimensions[0]; }
+  height() { return SaturnDimensions[1]; }
+  size() { return (this.width() * this.height()); }
+  index(x, y) {
+    let array_index = this.width() * y + x;
+    return array_index;
+  }
+  
+  forEachIndex(f) {
+    for (let j = 0; j < this.height(); j++) {
+      for (let i = 0; i < this.width(); i++) {
+	f.bind(this)(i, j);
+      }
+    }
+  }
+
+  getAt(x, y) {
+    return this.cubes[this.index(x, y)];
+  }
+
+  getAtIndex(idx) {
+    return this.cubes[idx];
+  }
+}
+
+// Saturn Itself
+// - this.elements[SaturnElement, ...,]
+// - SaturnCube -> this.cubes[SaturnCubeElement, ...,]
 class Saturn {
   constructor() {
     // Populate Elements
     this.elements = [];
     this.forEachIndex((i, j, k) => {
-      this.elements.push({
-        type: "empty",
-      });
+      this.elements.push(new SaturnElement(this));
     });
 
     // Populate Cubes
-    this.cubes = [];
-    this.forEachCubeIndex((i, j) => {
-      this.cubes.push({
-	playerSpawn: false,
-      });
-    });
+    this.cubes = new SaturnCube(this);
   }
 
   width() { return ElementDimensions[0]; }
@@ -229,42 +303,11 @@ class Saturn {
     return this.elements[idx];
   }
 
-  // Cube Magic
-
-  cubeWidth() { return SaturnDimensions[0]; }
-  cubeHeight() { return SaturnDimensions[1]; }
-  cubeSize() { return (this.cubeWidth() * this.cubeHeight()); }
-  cubeIndex(x, y) {
-    let array_index = this.width() * y + x;
-    return array_index;
-  }
-  
-  forEachCubeIndex(f) {
-    for (let j = 0; j < this.cubeHeight(); j++) {
-      for (let i = 0; i < this.cubeWidth(); i++) {
-	f.bind(this)(i, j);
-      }
-    }
-  }
-
-  getCubeAt(x, y) {
-    return this.cubes[this.cubeIndex(x, y)];
-  }
-
-  getCubeAtIndex(idx) {
-    return this.cubes[idx];
-  }
-
-  fill(x, y, z) {
-    this.getAt(x, y, z).type = "fill";
-  }
-
-  unfill(x, y, z) {
-    this.getAt(x, y, z).type = "empty";
-  }
-
-  floor(x, y, z) {
-    this.getAt(x, y, z).type = "floor";
+  // Get the parent cube to the element that comprises it.
+  getCubeFromElement(x, y, z) {
+    let cubeX = Math.floor(x / this.cubes.width());
+    let cubeY = Math.floor(y / this.cubes.height());
+    return this.cubes.getAt(cubeX, cubeY);
   }
 
   // Only displays the first z-plane, [i, j, 0]
@@ -273,10 +316,10 @@ class Saturn {
     for (let j = 0; j < this.height(); j++) {
       for (let i = 0; i < this.width(); i++) {
 	let element = this.getAt(i,j,0);
-	if (element.type == "fill") {
+	if (element.getType() == "fill") {
 	  s += "X";
 	}
-	else if (element.type == "floor") {
+	else if (element.getType() == "floor") {
 	  s += ".";
 	}
 	else {
@@ -289,11 +332,14 @@ class Saturn {
   }
 }
 
+
+
 /*
   
   Procedural Generation Strategies
 
  */
+
 
 
 //
@@ -338,7 +384,7 @@ class RoomPlacement {
       }
       else if (layout_type == "LongRoom") {
 	// Horizontal
-	if (this.srng.random_normal(0.5)) {
+	if (this.srng.random_chance(0.5)) {
 	  roomDimensions[0] = this.srng.random_integer(10,20);
 	  roomDimensions[1] = this.srng.random_integer(5,7);
 	}
@@ -394,10 +440,11 @@ class RoomPlacement {
   _modify_saturn() {
     this.saturn.forEachIndex((i,j,k) => {
       if (this.isInRoomBorder(i,j,k)) {
-	this.saturn.fill(i, j, k);
+	this.saturn.getAt(i, j, k).fill();
       }
       if (this.isInRoom(i,j,k)) {
-	this.saturn.floor(i,j,k);
+	let element = this.saturn.getAt(i,j,k);
+	if (k == 0) element.floor();
       }
     });
   }
@@ -450,25 +497,30 @@ class CellularAutomata {
     this.srng = procgen.srng;
     this.options = options || {};
   }
-
-  _splotch_wave() {
-    
+  
+  _splotch_wave(x, y, options) {
+    options = options || {};
+    let cycles = options.cycles || 100;
+    //We take into account the RoomPlacement (Stage 1)
+    let starting_rect = {x: x, y: y, w: 1, h: 1};
+    for (let ic = 0; ic < cycles; ic++) {
+      
+    }
   }
-
+  
   process() {
     
   }
 }
 
 
+
 // Drunkard's Walk
 // Diffusion Limited Aggregation
 // Centralized DLA
-
-
-
 // Voronoi Diagrams
 // Perlin or Simplex Noise
+
 
 
 // Combine Techniques...
@@ -482,7 +534,6 @@ class ProcGen {
     //
     // ProcGen Strategies
     //
-
     
     this.roomPlacement = new RoomPlacement(
       this,
@@ -498,7 +549,12 @@ class ProcGen {
   }
 
   process() {
+    // Stage 1 - Generate rooms
     this.roomPlacement.process();
+
+    // Stage 2 - Cellular Automata, Splotch the center of the map. Join the rooms.
+    this.cellularAutomata.process();
+
     return this;
   }
 
@@ -512,7 +568,12 @@ class ProcGen {
 
 
 
+//
 // BEGIN
+//
+
+
+
 let srng = new SeededRandomNumberGenerator("Test4");
 let dist = {
   Head: 2,
@@ -520,7 +581,7 @@ let dist = {
   Legs: 1,
 };
 let gen = () => { return srng.random_distribution(dist); };
-let coinFlip = () => { return srng.random_normal(0.5); };
+let coinFlip = () => { return srng.random_chance(0.5); };
 
 
 let procgen = new ProcGen("Delta-881", {
