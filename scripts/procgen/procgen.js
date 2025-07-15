@@ -218,6 +218,7 @@ class SaturnElement {
   }
 
   getType() { return this.type; }
+  setType(_type) { this.type = _type; }
   getParentCube() {
     return this.saturn.getCubeFromElement(this.x, this.y, this.z);
   }
@@ -718,12 +719,14 @@ class CellularAutomata {
 
 const BP_DEFAULT_BRIDGE_WIDTH = 4;
 const BP_DEFAULT_THRESHOLD = 20;
+const BP_DEFAULT_BRIDGE_LENGTH = 10;
 class BridgePlacement {
   constructor(procgen, options) {
     this.procgen = procgen;
     this.saturn = procgen.saturn;
     this.options = options || {};
     this.bridge_width = this.options.bridge_width || BP_DEFAULT_BRIDGE_WIDTH;
+    this.bridge_length = this.options.bridge_length || BP_DEFAULT_BRIDGE_LENGTH;
     this.threshold = this.options.threshold || BP_DEFAULT_THRESHOLD;
     this.placed_bridges = [];
   }
@@ -853,7 +856,7 @@ class BridgePlacement {
     return;
   }
 
-  _worm_crawl(x, y, direction, distance) {
+  _wormStartingPosition(room, direction) {
     
   }
 
@@ -866,7 +869,30 @@ class BridgePlacement {
 	  "left" : "right";
       let bridge_direction_vertical = (room.top > room.bottom) ?
 	  "top" : "bottom";
-      
+      let distribution = {
+	top: 0,
+	right: 0,
+	bottom: 0,
+	left: 0,
+      };
+      distribution[bridge_direction_horizontal] = 10;
+      distribution[bridge_direction_vertical] = 10;
+
+      if (room[bridge_direction_horizontal] > room[bridge_direction_vertical]) {
+	starting_direction = bridge_direction_horizontal;
+      }
+      else {
+	starting_direction = bridge_direction_vertical;
+      }
+
+      let starting_position = _wormStartingPosition(room, starting_direction);
+      let wormCrawler = new WormCrawler(this.procgen, {
+	start_position: starting_position,
+	start_direction: starting_direction,
+	distribution: distribution,
+	steps: this.bridge_length,
+	trail_width: this.bridge_width,
+      }).process();
     }
   }
 }
@@ -875,8 +901,14 @@ class BridgePlacement {
 class WormCrawler {
   constructor(procgen, options) {
     this.procgen = procgen;
+    this.saturn = procgen.saturn;
+    this.srng = procgen.srng;
     this.options = options || {};
     this.start_direction = this.options.start_direction || "top";
+    
+    let start_x = Math.floor(this.saturn.width() / 2);
+    let start_y = Math.floor(this.saturn.height() / 2);
+    this.start_position = this.options.start_position || [start_x, start_y];
     this.distribution = this.options.distribution || {
       top: 10,
       right: 10,
@@ -886,16 +918,92 @@ class WormCrawler {
     this.steps = this.options.steps || 10;
     this.trail_type = this.options.trail_type || "floor";
     this.trail_width = this.options.trail_width || 3;
+    this.trail_step_interval = this.options.trail_step_interval || 4;
 
+    //
     this.step_num = 0;
-    this.current_position = [0, 0];
-    this.current_direction = "top";
+    this.current_position = this.start_position;
+    this.current_direction = this.start_direction;
     
     return this;
   }
   
   _step() {
-    
+    if (this.step_num != 0 &&
+	(this.step_num % this.trail_step_interval) == 0)
+      this.current_direction = this.srng.randomDistribution(this.distribution);
+    switch(this.current_direction) {
+      case "top": this._crawl_top();
+      case "right": this._crawl_right();
+      case "bottom": this._crawl_bottom();
+      case "left": this._crawl_left();
+    }
+    this.step_num += 1;
+  }
+
+  _calculate_trail_spread() {
+    if (this.trail_width == 1) return [0, 0];
+    if (this.trail_width == 2) return this.srng.randomChance(0.5) ? [1,0] : [0, 1];
+    if (this.trail_width % 2 == 0) {
+      let spread = this.trail_width / 2;
+      return [spread, spread];
+    }
+    else {
+      let spread = (this.trail_width-1) / 2;
+      return [spread, spread];
+    }
+  }
+
+  _crawl_top() {
+    let x = this.current_position[0];
+    let y = this.current_position[1];
+    let spread = this._calculate_trail_spread();
+    for (let i = (x-spread[0]); i < (x+spread[1]); i++) {
+      if (i < 0 || i >= (this.saturn.width()-1)) continue;
+      let element = this.saturn.getAt(i, y, 0);
+      element.setType(this.trail_type);
+    }
+    if ((y-1) >= 0)
+      this.current_position[1] -= 1;
+  }
+
+  _crawl_right() {
+    let x = this.current_position[0];
+    let y = this.current_position[1];
+    let spread = this._calculate_trail_spread();
+    for (let j = (y-spread[0]); j < (y+spread[1]); j++) {
+      if (j < 0 || j >= (this.saturn.height()-1)) continue;
+      let element = this.saturn.getAt(x, j, 0);
+      element.setType(this.trail_type);
+    }
+    if ((x+1) < this.saturn.width())
+      this.current_position[0] += 1;
+  }
+
+  _crawl_bottom() {
+    let x = this.current_position[0];
+    let y = this.current_position[1];
+    let spread = this._calculate_trail_spread();
+    for (let i = (x-spread[0]); i < (x+spread[1]); i++) {
+      if (i < 0 || i >= (this.saturn.width()-1)) continue;
+      let element = this.saturn.getAt(i, y, 0);
+      element.setType(this.trail_type);
+    }
+    if ((y+1) < this.saturn.height())
+      this.current_position[1] += 1;
+  }
+
+  _crawl_left() {
+    let x = this.current_position[0];
+    let y = this.current_position[1];
+    let spread = this._calculate_trail_spread();
+    for (let j = (y-spread[0]); j < (y+spread[1]); j++) {
+      if (j < 0 || j >= (this.saturn.height()-1)) continue;
+      let element = this.saturn.getAt(x, j, 0);
+      element.setType(this.trail_type);
+    }
+    if ((x-1) >= 0)
+      this.current_position[0] -= 1;
   }
 
   process() {
