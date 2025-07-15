@@ -877,13 +877,11 @@ class BridgePlacement {
       };
       distribution[bridge_direction_horizontal] = 10;
       distribution[bridge_direction_vertical] = 10;
-
-      if (room[bridge_direction_horizontal] > room[bridge_direction_vertical]) {
-	starting_direction = bridge_direction_horizontal;
-      }
-      else {
-	starting_direction = bridge_direction_vertical;
-      }
+      
+      let starting_direction = 
+	  room[bridge_direction_horizontal] > room[bridge_direction_vertical] ?
+	  bridge_direction_horizontal :
+	  bridge_direction_vertical;
 
       let starting_position = _wormStartingPosition(room, starting_direction);
       let wormCrawler = new WormCrawler(this.procgen, {
