@@ -4,6 +4,15 @@
 //
 
 /*
+  Utility Libraries
+ */
+
+function DeepCopy(o) {
+  return JSON.parse(JSON.stringify(o));
+}
+
+
+/*
    Unseeded Random Generator
 */
 
@@ -193,7 +202,10 @@ class SeededRandomNumberGenerator {
 
 let SaturnDimensions = [6, 6];       // [Width, Height]
 let CubeDimensions = [8, 8, 8];      // [Width, Height, Depth]
-let ElementDimensions = [48, 48, 8];
+let ElementWidth = SaturnDimensions[0] * CubeDimensions[0];
+let ElementHeight = SaturnDimensions[1] * CubeDimensions[1];
+let ElementDepth = CubeDimensions[2];
+let ElementDimensions = [ElementWidth, ElementHeight, ElementDepth];
 
 // Individual Elements that make up Saturn
 class SaturnElement {
@@ -225,6 +237,12 @@ class SaturnElement {
   }
 
   isFloor() { return (this.type == "floor"); }
+
+  bridge() {
+    this.type = "bridge";
+  }
+
+  isBridge() { return (this.type == "bridge"); }
 }
 
 // Individual Cube Elements that make up Saturn's Cube.
@@ -335,6 +353,9 @@ class Saturn {
 	}
 	else if (element.getType() == "floor") {
 	  s += ".";
+	}
+	else if (element.getType() == "bridge") {
+	  s += "b";
 	}
 	else {
 	  s += " ";
@@ -696,43 +717,196 @@ class CellularAutomata {
 }
 
 const BP_DEFAULT_BRIDGE_WIDTH = 4;
+const BP_DEFAULT_THRESHOLD = 20;
 class BridgePlacement {
   constructor(procgen, options) {
     this.procgen = procgen;
     this.saturn = procgen.saturn;
     this.options = options || {};
     this.bridge_width = this.options.bridge_width || BP_DEFAULT_BRIDGE_WIDTH;
+    this.threshold = this.options.threshold || BP_DEFAULT_THRESHOLD;
     this.placed_bridges = [];
   }
 
-  _getRoomOutlier() {
+  _getRoomOutlierScores() {
     let placed_rooms = this.procgen.roomPlacement.getPlacedRooms();
-    let outlier_room = null;
-    let bOutlier = true;
-    for (let ri = 0; ri < placed_rooms.length; ri++) {
-      let room = placed_rooms[ri];
-      let getAt = (i, j) => this.saturn.getAt(i, j, 0);
+    let outlier_rooms = DeepCopy(placed_rooms);
+
+    // We score each side of each room in the outlier_rooms.
+    for (let ri = 0; ri < outlier_rooms.length; ri++) {
+      let room = outlier_rooms[ri];
 
       //top-left -- top-right
-      //bot-left -- bot-right
-      for (let i = room.x; i < (room.x+room.w); i++) {
+      this._scoreTop(room);
 
-      }
+      //bot-left -- bot-right
+      this._scoreBottom(room);
 
       //top-left  -- bot-left
+      this._scoreLeft(room);
+
       //top-right -- bot-right
-      for (let j = room.y; j < (room.y+room.h); j++) {
-	
+      this._scoreRight(room);
+    }
+    return outlier_rooms;
+  }
+
+  _popRoomHighestScore(outlier_rooms) {
+    let highest_scored_room = {score: 0, room: null};
+    if (outlier_rooms.length <= 0) return null;
+    for (let ri = 0; ri < outlier_rooms.length; ri++) {
+      let room = outlier_rooms[ri];
+      let total_score = room.top || 0 + room.right || 0 +
+	  room.bottom || 0 + room.left || 0;
+      if (total_score > highest_scored_room.score) {
+	highest_scored_room.score = total_score;
+	highest_scored_room.room = room;
       }
     }
+    outlier_rooms = outlier_rooms.filter((room) => {
+      return room != highest_scored_room.room;
+    });
+    return highest_scored_room.room;
+  }
+
+  _scoreTop(room) {
+    if (room.y == 0) {
+      room.top = 0;
+      return;
+    }
+    
+    let score = 0;
+    for (let i = room.x; i < (room.x+room.w); i++) {
+      let element = this.saturn.getAt(i, room.y-1, 0);
+      if (element.isEmpty()) score += 1;
+    }
+
+    // Weighted score out of 10
+    score = score / (room.w - room.x + 1) * 10;
+    
+    // Additional weighted scoring based on edge location and side.
+    score += (room.y / this.saturn.height()) * 10;
+    room.top = score;
+    return;
+  }
+
+  _scoreRight(room) {
+    if ((room.x+room.w) == this.saturn.width()) {
+      room.right = 0;
+      return;
+    }
+
+    let score = 0;
+    for (let i = room.x; i < (room.x+room.w); i++) {
+      let element = this.saturn.getAt(i, room.y+room.h, 0);
+      if (element.isEmpty()) score += 1;
+    }
+
+    // Weighted score out of 10
+    score = score / (room.h - room.y + 1) * 10;
+    
+    // Additional weighted scoring based on edge location and side.
+    score += ((this.saturn.width() - room.x) / this.saturn.width()) * 10;
+    room.left = score;
+    return;
+  }
+
+  _scoreBottom(room) {
+   if ((room.y+room.h) == this.saturn.height()) {
+      room.bottom = 0;
+      return;
+    }
+
+    let score = 0;
+    for (let j = room.y; j < (room.y+room.h); j++) {
+      let element = this.saturn.getAt(room.x+room.w, j, 0);
+      if (element.isEmpty()) score += 1;
+    }
+
+    // Weighted score out of 10
+    score = score / (room.w - room.x + 1) * 10;
+    
+    // Additional weighted scoring based on edge location and side.
+    score += ((this.saturn.height() - room.y) / this.saturn.height()) * 10;
+    room.bottom = score;
+    return;
+  }
+
+  _scoreLeft(room) {
+    if (room.x == 0) {
+      room.left = 0;
+      return;
+    }
+
+    let score = 0;
+    for (let j = room.y; j < (room.y+room.h); j++) {
+      let element = this.saturn.getAt(room.x-1, j, 0);
+      if (element.isEmpty()) score += 1;
+    }
+
+    // Weighted score out of 10
+    score = score / (room.h - room.y + 1) * 10;
+    
+    // Additional weighted scoring based on edge location and side.
+    score += (room.x / this.saturn.width()) * 10;
+    room.left = score;
+    return;
+  }
+
+  _worm_crawl(x, y, direction, distance) {
+    
   }
 
   process() {
-    
+    let total_score = (room) => room.top + room.right + room.bottom + room.left;
+    let outlier_rooms = _getRoomOutlierScores();
+    while(outlier_rooms) {
+      let room = _popRoomHighestScore(outlier_rooms);
+      let bridge_direction_horizontal = (room.left > room.right) ?
+	  "left" : "right";
+      let bridge_direction_vertical = (room.top > room.bottom) ?
+	  "top" : "bottom";
+      
+    }
   }
 }
 
 // Drunkard's Walk
+class WormCrawler {
+  constructor(procgen, options) {
+    this.procgen = procgen;
+    this.options = options || {};
+    this.start_direction = this.options.start_direction || "top";
+    this.distribution = this.options.distribution || {
+      top: 10,
+      right: 10,
+      bottom: 10,
+      left: 10,
+    };
+    this.steps = this.options.steps || 10;
+    this.trail_type = this.options.trail_type || "floor";
+    this.trail_width = this.options.trail_width || 3;
+
+    this.step_num = 0;
+    this.current_position = [0, 0];
+    this.current_direction = "top";
+    
+    return this;
+  }
+  
+  _step() {
+    
+  }
+
+  process() {
+    for (let i = 0; i < this.steps; i++) {
+      this._step();
+    }
+
+    return this;
+  }
+}
+
 // Diffusion Limited Aggregation
 // Centralized DLA
 // Voronoi Diagrams
@@ -812,7 +986,8 @@ let procgen = new ProcGen(null, {
     },
   },
   BridgePlacement: {
-    bridge_width: 4,
+    bridge_width: 3,
+    threshold: 20,
   },
 })
 .process()
