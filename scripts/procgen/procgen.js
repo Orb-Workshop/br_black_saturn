@@ -679,6 +679,8 @@ class SolidifySystem {
       if (!getAt(i-1,j).isEmpty()) solid_count += 2;
       if (!getAt(i-1,j+1).isEmpty()) solid_count += 1;
 
+
+      // Modify Saturn
       let element = getAt(i,j);
       if (solid_count < this.threshold && element.isFloor())
 	element.empty();
@@ -770,7 +772,7 @@ class BridgePlacement {
   }
 
   _scoreTop(room) {
-    if (room.y == 0) {
+    if (room.y <= 0) {
       room.top = 0;
       return;
     }
@@ -782,16 +784,18 @@ class BridgePlacement {
     }
 
     // Weighted score out of 10
-    score = score / (room.w - room.x + 1) * 10;
+    score /= (room.w + 1);
+    score *= 10;
     
     // Additional weighted scoring based on edge location and side.
-    score += (room.y / this.saturn.height()) * 10;
+    let h = this.saturn.height();
+    score += (room.y / h) * 10;
     room.top = score;
     return;
   }
 
   _scoreRight(room) {
-    if ((room.x+room.w) == this.saturn.width()) {
+    if ((room.x+room.w) >= this.saturn.width()) {
       room.right = 0;
       return;
     }
@@ -803,16 +807,18 @@ class BridgePlacement {
     }
 
     // Weighted score out of 10
-    score = score / (room.h - room.y + 1) * 10;
+    score /= (room.h + 1);
+    score *= 10;
     
     // Additional weighted scoring based on edge location and side.
-    score += ((this.saturn.width() - room.x) / this.saturn.width()) * 10;
-    room.left = score;
+    let w = this.saturn.width();
+    score += ((w-room.x) / w) * 10;
+    room.right = score;
     return;
   }
 
   _scoreBottom(room) {
-   if ((room.y+room.h) == this.saturn.height()) {
+   if ((room.y+room.h) >= this.saturn.height()) {
       room.bottom = 0;
       return;
     }
@@ -824,16 +830,18 @@ class BridgePlacement {
     }
 
     // Weighted score out of 10
-    score = score / (room.w - room.x + 1) * 10;
+    score /= (room.w + 1);
+    score *= 10;
     
     // Additional weighted scoring based on edge location and side.
-    score += ((this.saturn.height() - room.y) / this.saturn.height()) * 10;
+    let h = this.saturn.height();
+    score += ((h-room.y) / h) * 10;
     room.bottom = score;
     return;
   }
 
   _scoreLeft(room) {
-    if (room.x == 0) {
+    if (room.x <= 0) {
       room.left = 0;
       return;
     }
@@ -845,31 +853,34 @@ class BridgePlacement {
     }
 
     // Weighted score out of 10
-    score = score / (room.h - room.y + 1) * 10;
+    score /= (room.h + 1);
+    score *= 10;
     
     // Additional weighted scoring based on edge location and side.
-    score += (room.x / this.saturn.width()) * 10;
+    let w = this.saturn.width();
+    score += (room.x / w) * 10;
     room.left = score;
     return;
   }
 
   _wormStartingPosition(room, direction) {
     switch(direction) {
-      case "top": return [Math.round((room.x+room.w)/2), room.y];
-      case "bottom": return [Math.round((room.x+room.w)/2), room.y+room.h-1];
-      case "right": return [room.x+room.w-1, Math.round((room.y+room.h)/2)];
-      case "left": return [room.x, Math.round((room.y+room.h)/2)];
+      case "top": return [room.x+Math.round(room.w/2), room.y];
+      case "bottom": return [room.x+Math.round(room.w/2), room.y+room.h-1];
+      case "right": return [room.x+room.w-1, room.y+Math.round(room.h/2)];
+      case "left": return [room.x, room.y+Math.round(room.h/2)];
     }
     throw new Error("Unknown Direction: " + direction);
   }
 
   process() {
-    let total_score = (room) => room.top + room.right + room.bottom + room.left;
+    let calc_score = (room) => Math.max(room.top, room.right, room.bottom, room.left);
     let room = null;
     do {
       let outlier_rooms = this._getRoomOutlierScores();
       room = this._getRoomHighestScore(outlier_rooms);
-
+      console.log(room);
+      console.log("Total Score: " + calc_score(room));
       let bridge_direction_horizontal = (room.left > room.right) ?
 	  "left" : "right";
       let bridge_direction_vertical = (room.top > room.bottom) ?
@@ -888,6 +899,8 @@ class BridgePlacement {
 	  bridge_direction_horizontal :
 	  bridge_direction_vertical;
 
+      console.log("Starting Direction: " + starting_direction);
+
       let starting_position = this._wormStartingPosition(
 	room, starting_direction);
       let wormCrawler = new WormCrawler(this.procgen, {
@@ -897,7 +910,7 @@ class BridgePlacement {
 	steps: this.bridge_length,
 	trail_width: this.bridge_width,
       }).process();
-    } while (total_score(room) >= this.threshold);
+    } while (calc_score(room) >= this.threshold);
   }
 }
 
@@ -1111,7 +1124,7 @@ let procgen = new ProcGen(null, {
   BridgePlacement: {
     bridge_width: 3,
     bridge_length: 12,
-    threshold: 10,
+    threshold: 15,
   },
 })
 .process()
