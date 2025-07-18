@@ -754,7 +754,7 @@ class BridgePlacement {
     return outlier_rooms;
   }
 
-  _popRoomHighestScore(outlier_rooms) {
+  _getRoomHighestScore(outlier_rooms) {
     let highest_scored_room = {score: 0, room: null};
     if (outlier_rooms.length <= 0) return null;
     for (let ri = 0; ri < outlier_rooms.length; ri++) {
@@ -766,9 +766,6 @@ class BridgePlacement {
 	highest_scored_room.room = room;
       }
     }
-    outlier_rooms = outlier_rooms.filter((room) => {
-      return room != highest_scored_room.room;
-    });
     return highest_scored_room.room;
   }
 
@@ -857,14 +854,22 @@ class BridgePlacement {
   }
 
   _wormStartingPosition(room, direction) {
-    
+    switch(direction) {
+      case "top": return [Math.round((room.x+room.w)/2), room.y];
+      case "bottom": return [Math.round((room.x+room.w)/2), room.y+room.h-1];
+      case "right": return [room.x+room.w-1, Math.round((room.y+room.h)/2)];
+      case "left": return [room.x, Math.round((room.y+room.h)/2)];
+    }
+    throw new Error("Unknown Direction: " + direction);
   }
 
   process() {
     let total_score = (room) => room.top + room.right + room.bottom + room.left;
-    let outlier_rooms = _getRoomOutlierScores();
-    while(outlier_rooms) {
-      let room = _popRoomHighestScore(outlier_rooms);
+    let room = null;
+    do {
+      let outlier_rooms = this._getRoomOutlierScores();
+      room = this._getRoomHighestScore(outlier_rooms);
+
       let bridge_direction_horizontal = (room.left > room.right) ?
 	  "left" : "right";
       let bridge_direction_vertical = (room.top > room.bottom) ?
@@ -883,7 +888,8 @@ class BridgePlacement {
 	  bridge_direction_horizontal :
 	  bridge_direction_vertical;
 
-      let starting_position = _wormStartingPosition(room, starting_direction);
+      let starting_position = this._wormStartingPosition(
+	room, starting_direction);
       let wormCrawler = new WormCrawler(this.procgen, {
 	start_position: starting_position,
 	start_direction: starting_direction,
@@ -891,7 +897,7 @@ class BridgePlacement {
 	steps: this.bridge_length,
 	trail_width: this.bridge_width,
       }).process();
-    }
+    } while (total_score(room) >= this.threshold);
   }
 }
 
@@ -931,15 +937,15 @@ class WormCrawler {
 	(this.step_num % this.trail_step_interval) == 0)
       this.current_direction = this.srng.randomDistribution(this.distribution);
     switch(this.current_direction) {
-      case "top": this._crawl_top();
-      case "right": this._crawl_right();
-      case "bottom": this._crawl_bottom();
-      case "left": this._crawl_left();
+      case "top": this._crawlTop();
+      case "right": this._crawlRight();
+      case "bottom": this._crawlBottom();
+      case "left": this._crawlLeft();
     }
     this.step_num += 1;
   }
 
-  _calculate_trail_spread() {
+  _calculateTrailSpread() {
     if (this.trail_width == 1) return [0, 0];
     if (this.trail_width == 2) return this.srng.randomChance(0.5) ? [1,0] : [0, 1];
     if (this.trail_width % 2 == 0) {
@@ -952,10 +958,10 @@ class WormCrawler {
     }
   }
 
-  _crawl_top() {
+  _crawlTop() {
     let x = this.current_position[0];
     let y = this.current_position[1];
-    let spread = this._calculate_trail_spread();
+    let spread = this._calculateTrailSpread();
     for (let i = (x-spread[0]); i < (x+spread[1]); i++) {
       if (i < 0 || i >= (this.saturn.width()-1)) continue;
       let element = this.saturn.getAt(i, y, 0);
@@ -965,10 +971,10 @@ class WormCrawler {
       this.current_position[1] -= 1;
   }
 
-  _crawl_right() {
+  _crawlRight() {
     let x = this.current_position[0];
     let y = this.current_position[1];
-    let spread = this._calculate_trail_spread();
+    let spread = this._calculateTrailSpread();
     for (let j = (y-spread[0]); j < (y+spread[1]); j++) {
       if (j < 0 || j >= (this.saturn.height()-1)) continue;
       let element = this.saturn.getAt(x, j, 0);
@@ -978,10 +984,10 @@ class WormCrawler {
       this.current_position[0] += 1;
   }
 
-  _crawl_bottom() {
+  _crawlBottom() {
     let x = this.current_position[0];
     let y = this.current_position[1];
-    let spread = this._calculate_trail_spread();
+    let spread = this._calculateTrailSpread();
     for (let i = (x-spread[0]); i < (x+spread[1]); i++) {
       if (i < 0 || i >= (this.saturn.width()-1)) continue;
       let element = this.saturn.getAt(i, y, 0);
@@ -991,10 +997,10 @@ class WormCrawler {
       this.current_position[1] += 1;
   }
 
-  _crawl_left() {
+  _crawlLeft() {
     let x = this.current_position[0];
     let y = this.current_position[1];
-    let spread = this._calculate_trail_spread();
+    let spread = this._calculateTrailSpread();
     for (let j = (y-spread[0]); j < (y+spread[1]); j++) {
       if (j < 0 || j >= (this.saturn.height()-1)) continue;
       let element = this.saturn.getAt(x, j, 0);
@@ -1042,6 +1048,11 @@ class ProcGen {
       this.options.CellularAutomata,
     );
 
+    this.bridgePlacement = new BridgePlacement(
+      this,
+      this.options.BridgePlacement,
+    );
+
     return this;
   }
 
@@ -1049,8 +1060,14 @@ class ProcGen {
     // Stage 1 - Generate rooms
     this.roomPlacement.process();
 
-    // Stage 2 - Cellular Automata, Splotch the center of the map. Join the rooms.
+    // Stage 2 - Cellular Automata, Splotch the center of the
+    // map. Join the rooms. Solidify.
+
     this.cellularAutomata.process();
+
+    // Stage 3 - Build bridges from rooms with a emphasis on building
+    // to the center.
+    this.bridgePlacement.process();
 
     return this;
   }
@@ -1093,7 +1110,8 @@ let procgen = new ProcGen(null, {
   },
   BridgePlacement: {
     bridge_width: 3,
-    threshold: 20,
+    bridge_length: 12,
+    threshold: 10,
   },
 })
 .process()
