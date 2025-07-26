@@ -217,6 +217,13 @@ class SaturnElement {
     this.type = "empty";
   }
 
+  // Return a deep copy, or clone of the element.
+  clone() {
+    let element_clone = new SaturnElement(this.saturn, this.x, this.y, this.z);
+    element_clone.setType(this.getType());
+    return element_clone;
+  }
+
   getType() { return this.type; }
   setType(_type) { this.type = _type; }
   getParentCube() {
@@ -291,6 +298,113 @@ class SaturnCube {
   }
 }
 
+// A Deep Copy of Saturn's elements as a (x, y) slice (i, j, 0); k=0
+// Implemented as a derivative of Saturn.
+class Saturn2D {
+  constructor(saturn, options) {
+    this.saturn = saturn;
+    this.options = options || {};
+
+    this.elements = [];
+    this.forEachIndex((i, j) => {
+      this.elements.push(this.saturn.getAt(i,j,0).clone());
+    });
+
+    return this;
+  }
+
+  width() { return this.saturn.width(); }
+  height() { return this.saturn.height(); }
+  size() { return (this.width() * this.height()); }
+  index(x, y) { return this.saturn.index(x,y,0); }
+  forEachIndex(f) {
+    for (let j = 0; j < this.height(); j++) {
+      for (let i = 0; i < this.width(); i++) {
+	f.bind(this)(i,j);
+      }
+    }    
+  }
+
+  getAt(x, y) {
+    return this.elements[this.index(x,y)];
+  }
+
+  getAtIndex(idx) { return this.elements[idx]; }
+  display2d() { this.saturn.display2d(); }
+}
+
+// Saturn Pathfinding
+class Pathfinding {
+  constructor(procgen, options) {
+    this.procgen = procgen;
+    this.saturn = procgen.saturn;
+    this.srng = procgen.srng;
+    this.options = options || {};
+  }
+
+  getShortestPaths(x, y) {
+    let saturn2D = new Saturn2D(this.saturn);
+    this._prepareSaturn2D(saturn2D);
+    let starting_node = saturn2D.getAt(x, y);
+    starting_node.sentinel = 0;
+    this._calculateCost(saturn2D, x, y);
+  }
+
+  _calculateCost(saturn2D, x, y) {
+    let element = saturn2D.getAt(x, y);
+    element.visited = true;
+    
+    //top square
+    this._scoreTop(saturn2D, x, y);
+  }
+
+  _elementCalculateTypeCost(type) {
+    if (type == "fill") {
+      return 100;
+    }
+    else if (type == "floor") {
+      return 10;
+    }
+
+    else if (type == "empty") {
+      return 1000;
+    }
+    else {
+      throw new Error("Unknown Type: " + type);
+    }    
+  }
+
+  // Returns the element cost for sentinel comparison.
+  _elementCost(saturn2D, x, y) {
+    let element = saturn2D.getAt(x, y);
+    let type = element.getType();
+    let cost = this._elementCalculateTypeCost(type);
+    return cost;
+  }
+
+  _scoreTop(saturn2D, x, y) {
+    if (y <= 0) return;
+    let element = saturn2D.getAt(x, y);
+    let other_element = saturn2D.getAt(x, y-1);
+    
+  }
+
+  _prepareSaturn2D(saturn2D) {
+    saturn2D.forEachIndex((i, j) => {
+      let element = saturn2D.getAt(i, j);
+      element.sentinel = null;
+      element.parent = null;
+      element.visited = false;
+    });
+  }
+
+  _djikstraIteration() {
+    
+  }
+
+}
+
+
 // Saturn Itself
 // - this.elements[SaturnElement, ...,]
 // - SaturnCube -> this.cubes[SaturnCubeElement, ...,]
@@ -304,6 +418,8 @@ class Saturn {
 
     // Populate Cubes
     this.cubes = new SaturnCube(this);
+
+    return this;
   }
 
   width() { return ElementDimensions[0]; }
@@ -373,7 +489,6 @@ class Saturn {
 /*
   Procedural Generation Strategies
  */
-
 
 
 //
@@ -580,14 +695,14 @@ class SplotchCell {
   }
 }
 
-const CA_SPLOTCH_CYCLE = 10; //cycles
+const DEFAULT_CA_SPLOTCH_CYCLE = 10; //cycles
 class SplotchSystem {
   constructor(procgen, options) {
     options = options || {};
     this.procgen = procgen;
     this.saturn = procgen.saturn;
     this.srng = procgen.srng;
-    this.cycles = options.cycles || CA_SPLOTCH_CYCLE;
+    this.cycles = options.cycles || DEFAULT_CA_SPLOTCH_CYCLE;
     this.splotch_listing = [];
 
     return this;
@@ -1064,6 +1179,11 @@ class ProcGen {
     this.bridgePlacement = new BridgePlacement(
       this,
       this.options.BridgePlacement,
+    );
+
+    this.pathfinding = new Pathfinding(
+      this,
+      this.options.Pathfinding,
     );
 
     return this;
