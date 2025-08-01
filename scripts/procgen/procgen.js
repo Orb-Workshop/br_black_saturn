@@ -504,6 +504,7 @@ class RoomPlacement {
     this.srng = procgen.srng;
     this.saturn = procgen.saturn;
     this.options = options || {};
+    this.enabled = (this.options.enabled !== undefined) ? this.options.enabled : true;
     this.layout_distribution = options.layout_distribution || {
       BigRoom: 20,
       SmallRoom: 50,
@@ -628,10 +629,9 @@ class RoomPlacement {
   getPlacedRooms() { return this.placed_rooms; }
 
   process() {
+    if (!this.enabled) return;
     this._generateRooms();
     this._modifySaturn();
-    
-    return this;
   }
 }
 
@@ -698,7 +698,8 @@ class SplotchCell {
 const DEFAULT_CA_SPLOTCH_CYCLE = 10; //cycles
 class SplotchSystem {
   constructor(procgen, options) {
-    options = options || {};
+    this.options = options || {};
+    this.enabled = (this.options.enabled !== undefined) ? this.options.enabled : true;
     this.procgen = procgen;
     this.saturn = procgen.saturn;
     this.srng = procgen.srng;
@@ -752,14 +753,13 @@ class SplotchSystem {
   }
 
   process() {
+    if (!this.enabled) return;
     let starting_point = this._generateStartingPoint();
     let xpos = starting_point[0];
     let ypos = starting_point[1];
 
     this._wave(xpos, ypos);
     this._modifySaturn();
-
-    return this;
   }
 }
 
@@ -770,6 +770,7 @@ class SolidifySystem {
     this.procgen = procgen;
     this.saturn = procgen.saturn;
     this.options = options || {};
+    this.enabled = (this.options.enabled !== undefined) ? this.options.enabled : true;
     this.cycles = options.cycles || CA_SOLID_CYCLES;
     this.threshold = options.threshold || CA_SOLID_THRESHOLD;
 
@@ -807,11 +808,10 @@ class SolidifySystem {
   }
 
   process() {
+    if (!this.enabled) return;
     for (let i = 0; i < this.cycles; i++) {
       this._tick();
     }
-
-    return this;
   }
 }
 
@@ -821,6 +821,7 @@ class CellularAutomata {
     this.saturn = procgen.saturn;
     this.srng = procgen.srng;
     this.options = options || {};
+    this.enabled = (this.options.enabled !== undefined) ? this.options.enabled : true;
     this.splotchSystem = new SplotchSystem(procgen, this.options.Splotch || {});
     this.solidifySystem = new SolidifySystem(procgen, this.options.Solidify || {});
 
@@ -828,9 +829,9 @@ class CellularAutomata {
   }
 
   process() {
+    if (!this.enabled) return;
     this.splotchSystem.process();
     this.solidifySystem.process();
-    return this;
   }
 }
 
@@ -842,6 +843,7 @@ class BridgePlacement {
     this.procgen = procgen;
     this.saturn = procgen.saturn;
     this.options = options || {};
+    this.enabled = (this.options.enabled !== undefined) ? this.options.enabled : true;
     this.bridge_width = this.options.bridge_width || BP_DEFAULT_BRIDGE_WIDTH;
     this.bridge_length = this.options.bridge_length || BP_DEFAULT_BRIDGE_LENGTH;
     this.threshold = this.options.threshold || BP_DEFAULT_THRESHOLD;
@@ -989,13 +991,13 @@ class BridgePlacement {
   }
 
   process() {
+    if (this.enabled === false) return;
+    console.log("Enabled", this.enabled);
     let calc_score = (room) => Math.max(room.top, room.right, room.bottom, room.left);
     let room = null;
     do {
       let outlier_rooms = this._getRoomOutlierScores();
       room = this._getRoomHighestScore(outlier_rooms);
-      console.log(room);
-      console.log("Total Score: " + calc_score(room));
       let bridge_direction_horizontal = (room.left > room.right) ?
 	  "left" : "right";
       let bridge_direction_vertical = (room.top > room.bottom) ?
@@ -1013,8 +1015,6 @@ class BridgePlacement {
 	  room[bridge_direction_horizontal] > room[bridge_direction_vertical] ?
 	  bridge_direction_horizontal :
 	  bridge_direction_vertical;
-
-      console.log("Starting Direction: " + starting_direction);
 
       let starting_position = this._wormStartingPosition(
 	room, starting_direction);
@@ -1036,6 +1036,7 @@ class WormCrawler {
     this.saturn = procgen.saturn;
     this.srng = procgen.srng;
     this.options = options || {};
+    this.enabled = (this.options.enabled !== undefined) ? this.options.enabled : true;
     this.start_direction = this.options.start_direction || "top";
     
     let start_x = Math.floor(this.saturn.width() / 2);
@@ -1139,11 +1140,10 @@ class WormCrawler {
   }
 
   process() {
+    if (!this.enabled) return;
     for (let i = 0; i < this.steps; i++) {
       this._step();
     }
-
-    return this;
   }
 }
 
@@ -1242,9 +1242,10 @@ let procgen = new ProcGen(null, {
     },
   },
   BridgePlacement: {
+    enabled: false,
     bridge_width: 3,
     bridge_length: 12,
-    threshold: 15,
+    threshold: 20,
   },
 })
 .process()
