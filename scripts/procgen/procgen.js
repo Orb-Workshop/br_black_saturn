@@ -145,7 +145,7 @@ class SeededRandomNumberGenerator {
   randomDistribution(o) {
     let tupl = [];
     for (const [k, v] of Object.entries(o)) {
-      tupl.push([k, v]);
+      if (v && v > 0) tupl.push([k, v]);
     }
     let percent_total = tupl.reduce((sum, pair) => {
       return (pair[1] + sum);
@@ -157,7 +157,7 @@ class SeededRandomNumberGenerator {
     return distribution.find((tupl) => {
       let cstart = tupl[0];
       let cend = tupl[1];
-      return (rpos >= cstart && rpos <= cend);
+      return (rpos >= cstart && rpos <= cend); 
     })[2];
   }
 
@@ -347,13 +347,15 @@ class Pathfinding {
     this._prepareSaturn2D(saturn2D);
     let starting_node = saturn2D.getAt(x, y);
     starting_node.sentinel = 0;
+    console.log(starting_node);
     this._calculateCost(saturn2D, x, y);
     // Iterate over all unvisited nodes until they're all visited.
+    let unvisited_nodes = [];
     do {
-      let unvisited_nodes = saturn2D.elements.filter((element) => {
-	return (!element.visited && element.sentinel !== null);
-      });
-      unvisited_nodes.forEach((e) => this.calculateCost(saturn2D, e.x, e.y));
+      unvisited_nodes = saturn2D.elements.filter((element) => 
+	(!element.visited && element.sentinel !== null));
+      unvisited_nodes.forEach((e) => this._calculateCost(saturn2D, e.x, e.y));
+      console.log(unvisited_nodes.length);
     } while(unvisited_nodes.length > 0);
     return saturn2D;
   }
@@ -392,6 +394,7 @@ class Pathfinding {
   }
 
   _compareElements(e1, e2) {
+    if (e2.visited) return;
     let traversal_cost = (e1.sentinel || 0) + this._traversalCost(e1, e2);
     if (traversal_cost > (e2.sentinel || 0)) {
       e2.sentinel = traversal_cost;
@@ -881,184 +884,53 @@ class BridgePlacement {
     this.bridge_length = this.options.bridge_length || BP_DEFAULT_BRIDGE_LENGTH;
     this.threshold = this.options.threshold || BP_DEFAULT_THRESHOLD;
     this.placed_bridges = [];
+    this.pathfinding = new Pathfinding(
+      this.procgen,
+      this.options.Pathfinding,
+    );
   }
 
-  _getRoomOutlierScores() {
+  _getRoomsAveragePosition() {
     let placed_rooms = this.procgen.roomPlacement.getPlacedRooms();
-    let outlier_rooms = DeepCopy(placed_rooms);
-
-    // We score each side of each room in the outlier_rooms.
-    for (let ri = 0; ri < outlier_rooms.length; ri++) {
-      let room = outlier_rooms[ri];
-
-      //top-left -- top-right
-      this._scoreTop(room);
-
-      //bot-left -- bot-right
-      this._scoreBottom(room);
-
-      //top-left  -- bot-left
-      this._scoreLeft(room);
-
-      //top-right -- bot-right
-      this._scoreRight(room);
-    }
-    return outlier_rooms;
+    let room_total = placed_rooms.reduce((sum, room) => {
+      sum.x += room.x + (room.w/2);
+      sum.y += room.y + (room.h/2);
+      return sum;
+    }, {x: 0, y: 0});
+    let num_rooms = this.procgen.roomPlacement.num_rooms;
+    let average_position = {x: Math.round(room_total.x/num_rooms),
+			    y: Math.round(room_total.y/num_rooms)};
+    return average_position;
   }
 
-  _getRoomHighestScore(outlier_rooms) {
-    let highest_scored_room = {score: 0, room: null};
-    if (outlier_rooms.length <= 0) return null;
-    for (let ri = 0; ri < outlier_rooms.length; ri++) {
-      let room = outlier_rooms[ri];
-      let total_score = room.top || 0 + room.right || 0 +
-	  room.bottom || 0 + room.left || 0;
-      if (total_score > highest_scored_room.score) {
-	highest_scored_room.score = total_score;
-	highest_scored_room.room = room;
-      }
+  _crawlShortestPath(saturn2D, x, y, options) {
+    let current_position = [x, y];
+    while (current_position !== null) {
+      let px = current_position[0];
+      let py = current_position[1];
+      let element = this.saturn.getAt(px, py, 0).floor();
+      current_position = saturn2D.getAt(px, py).parent;
     }
-    return highest_scored_room.room;
-  }
-
-  _scoreTop(room) {
-    if (room.y <= 0) {
-      room.top = 0;
-      return;
-    }
-    
-    let score = 0;
-    for (let i = room.x; i < (room.x+room.w); i++) {
-      let element = this.saturn.getAt(i, room.y-1, 0);
-      if (element.isEmpty()) score += 1;
-    }
-
-    // Weighted score out of 10
-    score /= (room.w + 1);
-    score *= 10;
-    
-    // Additional weighted scoring based on edge location and side.
-    let h = this.saturn.height();
-    score += (room.y / h) * 10;
-    room.top = score;
-    return;
-  }
-
-  _scoreRight(room) {
-    if ((room.x+room.w) >= this.saturn.width()) {
-      room.right = 0;
-      return;
-    }
-
-    let score = 0;
-    for (let i = room.x; i < (room.x+room.w); i++) {
-      let element = this.saturn.getAt(i, room.y+room.h, 0);
-      if (element.isEmpty()) score += 1;
-    }
-
-    // Weighted score out of 10
-    score /= (room.h + 1);
-    score *= 10;
-    
-    // Additional weighted scoring based on edge location and side.
-    let w = this.saturn.width();
-    score += ((w-room.x) / w) * 10;
-    room.right = score;
-    return;
-  }
-
-  _scoreBottom(room) {
-   if ((room.y+room.h) >= this.saturn.height()) {
-      room.bottom = 0;
-      return;
-    }
-
-    let score = 0;
-    for (let j = room.y; j < (room.y+room.h); j++) {
-      let element = this.saturn.getAt(room.x+room.w, j, 0);
-      if (element.isEmpty()) score += 1;
-    }
-
-    // Weighted score out of 10
-    score /= (room.w + 1);
-    score *= 10;
-    
-    // Additional weighted scoring based on edge location and side.
-    let h = this.saturn.height();
-    score += ((h-room.y) / h) * 10;
-    room.bottom = score;
-    return;
-  }
-
-  _scoreLeft(room) {
-    if (room.x <= 0) {
-      room.left = 0;
-      return;
-    }
-
-    let score = 0;
-    for (let j = room.y; j < (room.y+room.h); j++) {
-      let element = this.saturn.getAt(room.x-1, j, 0);
-      if (element.isEmpty()) score += 1;
-    }
-
-    // Weighted score out of 10
-    score /= (room.h + 1);
-    score *= 10;
-    
-    // Additional weighted scoring based on edge location and side.
-    let w = this.saturn.width();
-    score += (room.x / w) * 10;
-    room.left = score;
-    return;
-  }
-
-  _wormStartingPosition(room, direction) {
-    switch(direction) {
-      case "top": return [room.x+Math.round(room.w/2), room.y];
-      case "bottom": return [room.x+Math.round(room.w/2), room.y+room.h-1];
-      case "right": return [room.x+room.w-1, room.y+Math.round(room.h/2)];
-      case "left": return [room.x, room.y+Math.round(room.h/2)];
-    }
-    throw new Error("Unknown Direction: " + direction);
   }
 
   process() {
     if (this.enabled === false) return;
-    console.log("Enabled", this.enabled);
-    let calc_score = (room) => Math.max(room.top, room.right, room.bottom, room.left);
-    let room = null;
-    do {
-      let outlier_rooms = this._getRoomOutlierScores();
-      room = this._getRoomHighestScore(outlier_rooms);
-      let bridge_direction_horizontal = (room.left > room.right) ?
-	  "left" : "right";
-      let bridge_direction_vertical = (room.top > room.bottom) ?
-	  "top" : "bottom";
-      let distribution = {
-	top: 0,
-	right: 0,
-	bottom: 0,
-	left: 0,
-      };
-      distribution[bridge_direction_horizontal] = 10;
-      distribution[bridge_direction_vertical] = 10;
-      
-      let starting_direction = 
-	  room[bridge_direction_horizontal] > room[bridge_direction_vertical] ?
-	  bridge_direction_horizontal :
-	  bridge_direction_vertical;
+    
+    // Find a good center point to have all paths converge on...
+    let average_position = this._getRoomsAveragePosition();
+    // Generate shortest path to this point.
+    let shortestPath = this.pathfinding.getShortestPaths(average_position.x,
+							 average_position.y);
+    // Create Crawlers that traverse the Shortest pathing from
+    // each room placement.
+    let placed_rooms = this.procgen.roomPlacement.getPlacedRooms();
+    placed_rooms.forEach((room) => {
+      let room_x = Math.round(room.x + room.w/2);
+      let room_y = Math.round(room.y + room.h/2);
+      this._crawlShortestPath(shortestPath, room_x, room_y, {});
+    });
 
-      let starting_position = this._wormStartingPosition(
-	room, starting_direction);
-      let wormCrawler = new WormCrawler(this.procgen, {
-	start_position: starting_position,
-	start_direction: starting_direction,
-	distribution: distribution,
-	steps: this.bridge_length,
-	trail_width: this.bridge_width,
-      }).process();
-    } while (calc_score(room) >= this.threshold);
+    // Form random paths between different rooms to add randomness/variety.
   }
 }
 
@@ -1214,11 +1086,6 @@ class ProcGen {
       this.options.BridgePlacement,
     );
 
-    this.pathfinding = new Pathfinding(
-      this,
-      this.options.Pathfinding,
-    );
-
     return this;
   }
 
@@ -1261,13 +1128,13 @@ let gen = () => { return srng.randomDistribution(dist); };
 let coinFlip = () => { return srng.randomChance(0.5); };
 
 
-let procgen = new ProcGen(null, {
+let procgen = new ProcGen(null,{
   RoomPlacement: {
     num_rooms: 6,
   },
   CellularAutomata: {
     Splotch: {
-      cycles: 25
+      cycles: 25,
     },
     Solidify: {
       cycles: 2,
@@ -1275,7 +1142,7 @@ let procgen = new ProcGen(null, {
     },
   },
   BridgePlacement: {
-    enabled: false,
+    enabled: true,
     bridge_width: 3,
     bridge_length: 12,
     threshold: 20,
