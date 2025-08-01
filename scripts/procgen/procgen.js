@@ -355,7 +355,6 @@ class Pathfinding {
       unvisited_nodes = saturn2D.elements.filter((element) => 
 	(!element.visited && element.sentinel !== null));
       unvisited_nodes.forEach((e) => this._calculateCost(saturn2D, e.x, e.y));
-      console.log(unvisited_nodes.length);
     } while(unvisited_nodes.length > 0);
     return saturn2D;
   }
