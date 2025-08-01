@@ -348,14 +348,24 @@ class Pathfinding {
     let starting_node = saturn2D.getAt(x, y);
     starting_node.sentinel = 0;
     this._calculateCost(saturn2D, x, y);
+    // Iterate over all unvisited nodes until they're all visited.
+    do {
+      let unvisited_nodes = saturn2D.elements.filter((element) => {
+	return (!element.visited && element.sentinel !== null);
+      });
+      unvisited_nodes.forEach((e) => this.calculateCost(saturn2D, e.x, e.y));
+    } while(unvisited_nodes.length > 0);
+    return saturn2D;
   }
 
   _calculateCost(saturn2D, x, y) {
     let element = saturn2D.getAt(x, y);
     element.visited = true;
     
-    //top square
     this._scoreTop(saturn2D, x, y);
+    this._scoreRight(saturn2D, x, y);
+    this._scoreBottom(saturn2D, x, y);
+    this._scoreLeft(saturn2D, x, y);
   }
 
   _elementCalculateTypeCost(type) {
@@ -374,19 +384,47 @@ class Pathfinding {
     }    
   }
 
-  // Returns the element cost for sentinel comparison.
-  _elementCost(saturn2D, x, y) {
-    let element = saturn2D.getAt(x, y);
-    let type = element.getType();
-    let cost = this._elementCalculateTypeCost(type);
-    return cost;
+  // Returns the traversal cost between elements.
+  _traversalCost(e1, e2) {
+    let cost1 = this._elementCalculateTypeCost(e1.getType());
+    let cost2 = this._elementCalculateTypeCost(e2.getType());
+    return (cost1 + cost2) / 2;
+  }
+
+  _compareElements(e1, e2) {
+    let traversal_cost = (e1.sentinel || 0) + this._traversalCost(e1, e2);
+    if (traversal_cost > (e2.sentinel || 0)) {
+      e2.sentinel = traversal_cost;
+      e2.parent = [e1.x, e1.y];
+    }
   }
 
   _scoreTop(saturn2D, x, y) {
     if (y <= 0) return;
     let element = saturn2D.getAt(x, y);
     let other_element = saturn2D.getAt(x, y-1);
-    
+    this._compareElements(element, other_element);
+  }
+
+  _scoreRight(saturn2D, x, y) {
+    if (x >= (saturn2D.width()-1)) return;
+    let element = saturn2D.getAt(x, y);
+    let other_element = saturn2D.getAt(x+1, y);
+    this._compareElements(element, other_element);
+  }
+
+  _scoreBottom(saturn2D, x, y) {
+    if (y >= (saturn2D.height()-1)) return;
+    let element = saturn2D.getAt(x, y);
+    let other_element = saturn2D.getAt(x, y+1);
+    this._compareElements(element, other_element);
+  }
+
+  _scoreLeft(saturn2D, x, y) {
+    if (x <= 0) return;
+    let element = saturn2D.getAt(x, y);
+    let other_element = saturn2D.getAt(x-1, y);
+    this._compareElements(element, other_element);
   }
 
   _prepareSaturn2D(saturn2D) {
@@ -397,11 +435,6 @@ class Pathfinding {
       element.visited = false;
     });
   }
-
-  _djikstraIteration() {
-    
-  }
-
 }
 
 
