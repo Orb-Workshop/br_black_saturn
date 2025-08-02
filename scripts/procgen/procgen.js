@@ -266,6 +266,12 @@ class SaturnElement {
 
   isWindow() { return (this.type == "window"); }
 
+  mountain() {
+    this.type = "mountain";
+  }
+
+  isMountain() { return (this.type == "mountain"); }
+
   //
   // Element Navigation 
   //
@@ -568,6 +574,9 @@ class Saturn {
 	else if (element.getType() == "window") {
 	  s += "W";
 	}
+	else if (element.getType() == "mountain") {
+	  s += "M";
+	}
 	else {
 	  s += "?";
 	}
@@ -798,6 +807,9 @@ class SplotchSystem {
     this.saturn = procgen.saturn;
     this.srng = procgen.srng;
     this.cycles = options.cycles || DEFAULT_CA_SPLOTCH_CYCLE;
+    this.starting_point = this.options.starting_point || this._generateStartingPoint();
+    this.splotch_type = this.options.splotch_type || "floor";
+
     this.splotch_listing = [];
 
     return this;
@@ -836,7 +848,7 @@ class SplotchSystem {
   _modifySaturn() {
     let saturn = this.procgen.saturn;
     this.splotch_listing.map((splotch) => {
-      saturn.getAt(splotch.x, splotch.y, 0).floor();
+      saturn.getAt(splotch.x, splotch.y, 0).setType(this.splotch_type);
     });
   }
 
@@ -848,7 +860,7 @@ class SplotchSystem {
 
   process() {
     if (!this.enabled) return;
-    let starting_point = this._generateStartingPoint();
+    let starting_point = this.starting_point;
     let xpos = starting_point[0];
     let ypos = starting_point[1];
 
@@ -1452,9 +1464,36 @@ class WindowPlacement {
     if (!this.enabled) return;
     for (let i = 0; i < this.num_windows; i++) {
       let raytracing = new RayTracing(this.procgen, {func_collision: ((e) => e.isFill())});
-      // We collide rays against the side of our buildings to make windows.
+      // Collide rays against the side of the buildings to make windows.
       let element = raytracing.getRayCollision();
       if (element !== null && element.isFill()) element.window();
+    }
+  }
+}
+
+class MountainPlacement {
+  constructor(procgen, options) {
+    this.procgen = procgen;
+    this.saturn = procgen.saturn;
+    this.options = options || {};
+    this.enabled = (this.options.enabled !== undefined) ? this.options.enabled : true;
+    this.num_mountains = this.options.num_mountains || 2;
+  }
+
+  process() {
+    if (!this.enabled) return;
+    for (let i = 0; i < this.num_mountains; i++) {
+      let checkCollision = (element) => ["floor", "cover"].includes(element.getType());
+      let raytracing = new RayTracing(this.procgen, {func_collision: checkCollision});
+      let element = raytracing.getRayCollision();
+      if (element !== null && checkCollision(element)) {
+	element.mountain();
+	let splotchSystem = new SplotchSystem(this.procgen, {
+	  splotch_type: "mountain",
+	  starting_point: [element.x, element.y],
+	});
+	splotchSystem.process();
+      }
     }
   }
 }
@@ -1496,6 +1535,11 @@ class ProcGen {
       this.options.WindowPlacement,
     );
 
+    this.mountainPlacement = new MountainPlacement(
+      this,
+      this.options.MountainPlacement,
+    );
+
     return this;
   }
 
@@ -1518,6 +1562,9 @@ class ProcGen {
 
     // Stage 5 - Add windows to the buildings using raycasting
     this.windowPlacement.process();
+
+    // Stage 6 - Raycast a starting point, and splotch some mountains.
+    this.mountainPlacement.process();
 
     return this;
   }
@@ -1550,9 +1597,6 @@ let procgen = new ProcGen(seed, {
   },
   BridgePlacement: {
     enabled: true,
-    bridge_width: 3,
-    bridge_length: 12,
-    threshold: 20,
   },
   CoverPlacement: {
     num_cover: 20,
@@ -1560,6 +1604,9 @@ let procgen = new ProcGen(seed, {
   WindowPlacement: {
     num_windows: 20,
   },
+  MountainPlacement: {
+    num_mountains: 4,
+  }
 })
 .process()
 .display2d();
