@@ -260,6 +260,12 @@ class SaturnElement {
 
   isCover() { return (this.type == "cover"); }
 
+  window() {
+    this.type = "window";
+  }
+
+  isWindow() { return (this.type == "window"); }
+
   //
   // Element Navigation 
   //
@@ -558,6 +564,9 @@ class Saturn {
 	}
 	else if (element.getType() == "cover") {
 	  s += "c";
+	}
+	else if (element.getType() == "window") {
+	  s += "W";
 	}
 	else {
 	  s += "?";
@@ -1311,6 +1320,101 @@ class DiffusionLimitedAggregation {
   }
 }
 
+class RayTracing {
+  constructor(procgen, options) {
+    this.procgen = procgen;
+    this.saturn = procgen.saturn;
+    this.srng = procgen.srng;
+    this.options = options || {};
+    this.func_collision = this.options.func_collision || ((element) => element.isFill());
+    this.starting_point = this.options.starting_point || this._generatePoint();
+    this.starting_direction = this.options.starting_direction || this._generateDirection();
+    this.max_distance = this.options.max_distance ||
+      Math.floor((this.saturn.width() + this.saturn.height()) * 2);
+    this.propagation_distance = this.options.propagation_distance || 0.1;
+
+    this.current_point = this.starting_point;
+    this.current_element = this.locateElement(this.starting_point[0], this.starting_point[1], 0);
+  }
+
+  locateElement(x, y, z) {
+    x = (x >= 0) ? x : 0;
+    x = (x <= this.saturn.width()-1) ? x : this.saturn.width()-1;
+    x = Math.floor(x);
+
+    y = (y >= 0) ? y : 0;
+    y = (y <= this.saturn.height()-1) ? y : this.saturn.height()-1;
+    y = Math.floor(y);
+
+    z = (z !== undefined) ? z : 0;
+    z = (z >= 0) ? z : 0;
+    z = (z <= this.saturn.depth()-1) ? z : this.saturn.depth()-1;
+    z = Math.floor(z);
+
+    let element = this.saturn.getAt(x, y, z);
+    return element;
+  }
+  
+  _generatePoint() {
+    while(true) {
+      let x = this.srng.randomFloat(0, this.saturn.width()-1);
+      let y = this.srng.randomFloat(0, this.saturn.height()-1);
+      let element = this.saturn.getAt(Math.floor(x), Math.floor(y), 0);
+      if (!this.func_collision(element)) {
+	return [x, y];
+      }
+    }
+  }
+
+  // Direction Vector / Unit Vector
+  _generateDirection() {
+    let x = this.srng.randomFloat(-1, 1);
+    let y = this.srng.randomFloat(-1, 1);
+    let mag = Math.sqrt((x*x) + (y*y));
+    return [ x / mag, y / mag ];
+  }
+
+  _getDistance() {
+    let p1 = this.starting_point;
+    let p2 = this.current_point;
+    let pt = [p1[0] - p2[0], p1[1] - p2[1]];
+    return Math.sqrt(pt[0]*pt[0]+pt[1]*pt[1]);
+  }
+
+  _propagateRay() {
+    let x_c = this.starting_direction[0] * this.propagation_distance;
+    let y_c = this.starting_direction[1] * this.propagation_distance;
+    this.current_point[0] += x_c;
+    this.current_point[1] += y_c;
+    this._applyLoopAround(this.current_point);
+  }
+
+  _applyLoopAround(p) {
+    let w = this.saturn.width();
+    let h = this.saturn.height();
+    p[0] = (p[0] >= 0) ? p[0] : w-1;
+    p[0] = (p[0] <= w-1) ? p[0] : 0;
+    p[1] = (p[1] >= 0) ? p[1] : h-1;
+    p[1] = (p[1] <= h-1) ? p[1] : 0;
+    return p;
+  }
+
+  getRayCollision() {
+    let element = null;
+    while(this._getDistance() < this.max_distance) {
+      this._propagateRay();
+      element = this.locateElement(this.current_point[0],
+				   this.current_point[1]);
+      if (this.current_element !== element &&
+	  this.func_collision(element)) {
+	this.current_element = element;
+	return element;
+      }
+    }
+    return element;
+  }
+}
+
 // Centralized DLA
 // Voronoi Diagrams
 // Perlin or Simplex Noise
@@ -1321,11 +1425,12 @@ class CoverPlacement {
     this.saturn = procgen.saturn;
     this.srng = procgen.srng;
     this.options = options || {};
-
+    this.enabled = (this.options.enabled !== undefined) ? this.options.enabled : true;
     this.num_cover = this.options.num_cover || 10;
   }
 
   process() {
+    if (!this.enabled) return;
     for (let i = 0; i < this.num_cover; i++) {
       let dLA = new DiffusionLimitedAggregation(this.procgen);
       dLA.process();
@@ -1333,7 +1438,26 @@ class CoverPlacement {
   }
 }
 
+class WindowPlacement {
+  constructor(procgen, options) {
+    this.procgen = procgen;
+    this.saturn = procgen.saturn;
+    this.options = options || {};
+    this.enabled = (this.options.enabled !== undefined) ? this.options.enabled : true;
+    this.num_windows = this.options.num_windows || 10;
+    
+  }
 
+  process() {
+    if (!this.enabled) return;
+    for (let i = 0; i < this.num_windows; i++) {
+      let raytracing = new RayTracing(this.procgen, {func_collision: ((e) => e.isFill())});
+      // We collide rays against the side of our buildings to make windows.
+      let element = raytracing.getRayCollision();
+      if (element !== null && element.isFill()) element.window();
+    }
+  }
+}
 
 // Combine Techniques...
 class ProcGen {
@@ -1367,6 +1491,11 @@ class ProcGen {
       this.options.CoverPlacement,
     );
     
+    this.windowPlacement = new WindowPlacement(
+      this,
+      this.options.WindowPlacement,
+    );
+
     return this;
   }
 
@@ -1387,6 +1516,9 @@ class ProcGen {
     // Stage 4 - Add Cover using DLA
     this.coverPlacement.process();
 
+    // Stage 5 - Add windows to the buildings using raycasting
+    this.windowPlacement.process();
+
     return this;
   }
 
@@ -1401,8 +1533,9 @@ class ProcGen {
 //
 // BEGIN
 //
-
-let procgen = new ProcGen(null,{
+let args = process.argv;
+let seed = args.length > 2 ? args[2] : null;
+let procgen = new ProcGen(seed, {
   RoomPlacement: {
     num_rooms: 6,
   },
@@ -1423,6 +1556,9 @@ let procgen = new ProcGen(null,{
   },
   CoverPlacement: {
     num_cover: 20,
+  },
+  WindowPlacement: {
+    num_windows: 20,
   },
 })
 .process()
