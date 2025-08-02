@@ -233,6 +233,8 @@ class SaturnElement {
   fill() {
     this.type = "fill";
   }
+  
+  isFill() { return (this.type == "fill"); }
 
   empty() {
     this.type = "empty";
@@ -347,7 +349,6 @@ class Pathfinding {
     this._prepareSaturn2D(saturn2D);
     let starting_node = saturn2D.getAt(x, y);
     starting_node.sentinel = 0;
-    console.log(starting_node);
     this._calculateCost(saturn2D, x, y);
     // Iterate over all unvisited nodes until they're all visited.
     let unvisited_nodes = [];
@@ -912,13 +913,132 @@ class BridgePlacement {
     }
   }
 
+  _cellAutomata_ExpandRooms() {
+    this.saturn.forEachIndex((i,j,k) => {
+      let getAt = (x, y) => this.saturn.getAt(x, y, 0);
+      let element = getAt(i, j);
+      if (k !== 0) return;
+      if (i <= 0 || i >= this.saturn.width()-1) return;
+      if (j <= 0 || j >= this.saturn.height()-1) return;
+
+      // Find room borders that are openings and expand them.
+      if (this.procgen.roomPlacement.isInRoomBorder(i, j, 0) &&
+	  element.isFloor()) {
+	// Check for Vertical Opening
+	if (getAt(i-1, j).isFill() &&
+	    getAt(i+1, j).isFill() &&
+	    getAt(i, j-1).isFloor() &&
+	    getAt(i, j+1).isFloor()) {
+	  getAt(i-1, j).floor();
+	  getAt(i+1, j).floor();
+	}
+	// Check for Horizontal Opening
+	else if (getAt(i-1, j).isFloor() &&
+		 getAt(i+1, j).isFloor() &&
+		 getAt(i, j-1).isFill() &&
+		 getAt(i, j+1).isFill()) {
+	  getAt(i, j-1).floor();
+	  getAt(i, j+1).floor();
+	}
+      }
+    });
+  }
+
+  _cellAutomata_BuildJunctions() {
+    this.saturn.forEachIndex((i,j,k) => {
+      let getAt = (x, y) => this.saturn.getAt(x, y, 0);
+      let element = getAt(i, j);
+      if (k !== 0) return;
+      if (i <= 0 || i >= this.saturn.width()-1) return;
+      if (j <= 0 || j >= this.saturn.height()-1) return;
+      
+      // Find L & T-Junctions, and fill them in.
+      if (element.isFloor() &&
+	  getAt(i-1, j-1).isEmpty() &&
+	  getAt(i+1, j-1).isEmpty() &&
+	  getAt(i+1, j+1).isEmpty() &&
+	  getAt(i-1, j+1).isEmpty()) {
+	let junctions = 0;
+	junctions += getAt(i, j-1).isFloor() ? 1 : 0;
+	junctions += getAt(i+1, j).isFloor() ? 1 : 0;
+	junctions += getAt(i-1, j).isFloor() ? 1 : 0;
+	junctions += getAt(i, j+1).isFloor() ? 1 : 0;
+	if (junctions >= 2) {
+	  getAt(i-1, j-1).floor();
+	  getAt(i, j-1).floor();
+	  getAt(i+1, j-1).floor();
+	  getAt(i+1, j).floor();
+	  getAt(i+1, j+1).floor();
+	  getAt(i, j+1).floor();
+	  getAt(i-1, j+1).floor();
+	  getAt(i-1, j).floor();
+	}
+      }
+    });
+  }
+
+  _cellAutomata_BridgeExpand() {
+    this.saturn.forEachIndex((i,j,k) => {
+      let getAt = (x, y) => this.saturn.getAt(x, y, 0);
+      let element = getAt(i, j);
+      if (k !== 0) return;
+      if (i <= 0 || i >= this.saturn.width()-1) return;
+      if (j <= 0 || j >= this.saturn.height()-1) return;
+      if (!element.isFloor()) return;
+      //Check Vertical
+      if (getAt(i-1, j).isEmpty() &&
+	  getAt(i+1, j).isEmpty() &&
+	  getAt(i, j-1).isFloor() &&
+	  getAt(i, j+1).isFloor()) {
+	getAt(i-1, j).floor();
+	getAt(i+1, j).floor();
+      }
+      // Check Horizontal
+      else if (getAt(i-1, j).isFloor() &&
+	       getAt(i+1, j).isFloor() &&
+	       getAt(i, j-1).isEmpty() &&
+	       getAt(i, j+1).isEmpty()) {
+	getAt(i, j-1).floor();
+	getAt(i, j+1).floor();
+      }
+    });
+  }
+
+  _cellAutomata_ExpandWallLedges() {
+    this.saturn.forEachIndex((i,j,k) => {
+      let getAt = (x, y) => this.saturn.getAt(x, y, 0);
+      let element = getAt(i, j);
+      if (k !== 0) return;
+      if (i <= 1 || i >= this.saturn.width()-2) return;
+      if (j <= 1 || j >= this.saturn.height()-2) return;
+      if (!element.isFill()) return;
+      
+      // Check Top
+      if (getAt(i, j-1).isFloor())
+	getAt(i, j-2).floor();
+
+      // Check Right
+      if (getAt(i+1, j).isFloor())
+	getAt(i+2, j).floor();
+
+      // Check Bottom
+      if (getAt(i, j+1).isFloor())
+	getAt(i, j+2).floor();
+
+      // Check Left
+      if (getAt(i-1, j).isFloor())
+	getAt(i-2, j).floor();
+
+    });
+  }
+
   process() {
     if (this.enabled === false) return;
     
     // Find a good center point to have all paths converge on...
     let average_position = this._getRoomsAveragePosition();
     // Generate shortest path to this point.
-    let shortestPath = this.pathfinding.getShortestPaths(average_position.x,
+    let shortest_path = this.pathfinding.getShortestPaths(average_position.x,
 							 average_position.y);
     // Create Crawlers that traverse the Shortest pathing from
     // each room placement.
@@ -926,10 +1046,21 @@ class BridgePlacement {
     placed_rooms.forEach((room) => {
       let room_x = Math.round(room.x + room.w/2);
       let room_y = Math.round(room.y + room.h/2);
-      this._crawlShortestPath(shortestPath, room_x, room_y, {});
+      this._crawlShortestPath(shortest_path, room_x, room_y, {});
     });
 
     // Form random paths between different rooms to add randomness/variety.
+    // TODO
+    
+    // Cell Automata, make room entrances 3 wide
+    this._cellAutomata_ExpandRooms();
+    // Build out any T and L Junctions
+    this._cellAutomata_BuildJunctions();
+    // Build all of the Bridges.
+    this._cellAutomata_BridgeExpand();
+    // Extend out Wall ledges into paths
+    this._cellAutomata_ExpandWallLedges();
+
   }
 }
 
