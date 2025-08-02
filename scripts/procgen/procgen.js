@@ -253,6 +253,49 @@ class SaturnElement {
   }
 
   isBridge() { return (this.type == "bridge"); }
+
+  cover() {
+    this.type = "cover";
+  }
+
+  isCover() { return (this.type == "cover"); }
+
+  //
+  // Element Navigation 
+  //
+
+  // x
+  left() {
+    if (this.x <= 0) return null;
+    return this.saturn.getAt(this.x-1, this.y, this.z);
+  }
+
+  right() {
+    if (this.x >= this.saturn.width()-1) return null;
+    return this.saturn.getAt(this.x+1, this.y, this.z);
+  }
+
+  // y
+  up() {
+    if (this.y <= 0) return null;
+    return this.saturn.getAt(this.x, this.y-1, this.z);
+  }
+
+  down() {
+    if (this.y >= this.saturn.height()-1) return null;
+    return this.saturn.getAt(this.x, this.y+1, this.z);
+  }
+
+  // z
+  top() {
+    if (this.z >= this.saturn.depth()-1) return null;
+    return this.saturn.getAt(this.x, this.y, this.z+1);
+  }
+
+  bottom() {
+    if (this.z <= 0) return null;
+    return this.saturn.getAt(this.x, this.y, this.z-1);
+  }
 }
 
 // Individual Cube Elements that make up Saturn's Cube.
@@ -510,8 +553,14 @@ class Saturn {
 	else if (element.getType() == "bridge") {
 	  s += "b";
 	}
-	else {
+	else if (element.getType() == "empty") {
 	  s += " ";
+	}
+	else if (element.getType() == "cover") {
+	  s += "c";
+	}
+	else {
+	  s += "?";
 	}
       }
       s += "\n";
@@ -985,7 +1034,7 @@ class BridgePlacement {
       if (i <= 0 || i >= this.saturn.width()-1) return;
       if (j <= 0 || j >= this.saturn.height()-1) return;
       if (!element.isFloor()) return;
-      //Check Vertical
+      // Check Vertical
       if (getAt(i-1, j).isEmpty() &&
 	  getAt(i+1, j).isEmpty() &&
 	  getAt(i, j-1).isFloor() &&
@@ -1039,7 +1088,7 @@ class BridgePlacement {
     let average_position = this._getRoomsAveragePosition();
     // Generate shortest path to this point.
     let shortest_path = this.pathfinding.getShortestPaths(average_position.x,
-							 average_position.y);
+							  average_position.y);
     // Create Crawlers that traverse the Shortest pathing from
     // each room placement.
     let placed_rooms = this.procgen.roomPlacement.getPlacedRooms();
@@ -1060,7 +1109,7 @@ class BridgePlacement {
     this._cellAutomata_BridgeExpand();
     // Extend out Wall ledges into paths
     this._cellAutomata_ExpandWallLedges();
-
+    
   }
 }
 
@@ -1101,10 +1150,10 @@ class WormCrawler {
 	(this.step_num % this.trail_step_interval) == 0)
       this.current_direction = this.srng.randomDistribution(this.distribution);
     switch(this.current_direction) {
-      case "top": this._crawlTop();
-      case "right": this._crawlRight();
-      case "bottom": this._crawlBottom();
-      case "left": this._crawlLeft();
+      case "top": this._crawlTop(); break;
+      case "right": this._crawlRight(); break;
+      case "bottom": this._crawlBottom(); break;
+      case "left": this._crawlLeft(); break;
     }
     this.step_num += 1;
   }
@@ -1182,10 +1231,107 @@ class WormCrawler {
   }
 }
 
-// Diffusion Limited Aggregation
+class DiffusionLimitedAggregation {
+  constructor(procgen, options) {
+    this.procgen = procgen;
+    this.saturn = procgen.saturn;
+    this.srng = procgen.srng;
+    this.options = options || {};
+    this.cycles = this.options.cycles || 50000;
+    this.max_aggregate = this.options.max_aggregate || 6;
+    this.fill_type = this.options.fill_type || "cover";
+    this.filter_whitelist = this.options.filter_whitelist || ["empty"];
+    this.seed_point = this.options.seed_point || this._generateParticle();
+
+    // [SaturnElement, ...]
+    this.current_aggregates = [this.seed_point];
+
+    this.particle = null;
+  }
+
+  _generateParticle() {
+    while(true) {
+      let x = this.srng.randomInteger(0, this.saturn.width()-1);
+      let y = this.srng.randomInteger(0, this.saturn.height()-1);
+      let element = this.saturn.getAt(x, y, 0);
+      if (this.filter_whitelist.includes(element.getType())) {
+	return element;
+      }
+    }
+  }
+
+  _iterateCycle() {
+    if (this.particle === null)
+      this.particle = this._generateParticle();
+
+    // Check if we reached the maximum number of aggregates.
+    if (this.current_aggregates.length >= this.max_aggregate) return true; 
+
+    // Check if the particle is near any aggregates
+    if (this.current_aggregates.includes(this.particle.up()) ||
+	this.current_aggregates.includes(this.particle.right()) ||
+	this.current_aggregates.includes(this.particle.down()) ||
+	this.current_aggregates.includes(this.particle.left())) {
+      // Check if I can place an aggregate here, otherwise fire a new particle.
+      if (this.filter_whitelist.includes(this.particle.getType())) {
+	this.current_aggregates.push(this.particle);
+	this.particle = null;
+	return false;
+      }
+      else {
+	this.particle = null;
+	return false;
+      }
+    }
+
+    let distribution = {
+      up: 1,
+      right: 1,
+      down: 1,
+      left: 1,
+    };
+
+    switch(this.srng.randomDistribution(distribution)) {
+      case "up": this.particle = this.particle.up(); break;
+      case "right": this.particle = this.particle.right(); break;
+      case "down": this.particle = this.particle.down(); break;
+      case "left": this.particle = this.particle.left(); break;
+    }
+    return false;
+  }
+
+  process() {
+    let bMaxAggregates = false;
+    for (let i = 0; i < this.cycles; i++) {
+      bMaxAggregates = this._iterateCycle();
+      if (bMaxAggregates) break;
+    }
+
+    this.current_aggregates.forEach((element) => element.setType(this.fill_type));
+  }
+}
+
 // Centralized DLA
 // Voronoi Diagrams
 // Perlin or Simplex Noise
+
+class CoverPlacement {
+  constructor(procgen, options) {
+    this.procgen = procgen;
+    this.saturn = procgen.saturn;
+    this.srng = procgen.srng;
+    this.options = options || {};
+
+    this.num_cover = this.options.num_cover || 10;
+  }
+
+  process() {
+    for (let i = 0; i < this.num_cover; i++) {
+      let dLA = new DiffusionLimitedAggregation(this.procgen);
+      dLA.process();
+    }
+  }
+}
 
 
 
@@ -1216,6 +1362,11 @@ class ProcGen {
       this.options.BridgePlacement,
     );
 
+    this.coverPlacement = new CoverPlacement(
+      this,
+      this.options.CoverPlacement,
+    );
+    
     return this;
   }
 
@@ -1230,7 +1381,11 @@ class ProcGen {
 
     // Stage 3 - Build bridges from rooms with a emphasis on building
     // to the center.
+    // Stage 3.5 - CellAutomata to cleanup bridge construction.
     this.bridgePlacement.process();
+
+    // Stage 4 - Add Cover using DLA
+    this.coverPlacement.process();
 
     return this;
   }
@@ -1246,17 +1401,6 @@ class ProcGen {
 //
 // BEGIN
 //
-
-
-let srng = new SeededRandomNumberGenerator("Test4");
-let dist = {
-  Head: 2,
-  Chest: 3,
-  Legs: 1,
-};
-let gen = () => { return srng.randomDistribution(dist); };
-let coinFlip = () => { return srng.randomChance(0.5); };
-
 
 let procgen = new ProcGen(null,{
   RoomPlacement: {
@@ -1276,6 +1420,9 @@ let procgen = new ProcGen(null,{
     bridge_width: 3,
     bridge_length: 12,
     threshold: 20,
+  },
+  CoverPlacement: {
+    num_cover: 20,
   },
 })
 .process()
