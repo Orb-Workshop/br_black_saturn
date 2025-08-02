@@ -426,19 +426,16 @@ class Pathfinding {
   }
 
   _elementCalculateTypeCost(type) {
-    if (type == "fill") {
-      return 100;
+    switch(type) {
+      case "floor":    return 10;
+      case "bridge":   return 20;
+      case "mountain": return 120;
+      case "cover":    return 180;
+      case "fill":     return 200;
+      case "window":   return 210;
+      case "empty":    return 1000;
+      default: throw new Error("Unknown Type: " + type);
     }
-    else if (type == "floor") {
-      return 10;
-    }
-
-    else if (type == "empty") {
-      return 1000;
-    }
-    else {
-      throw new Error("Unknown Type: " + type);
-    }    
   }
 
   // Returns the traversal cost between elements.
@@ -1339,6 +1336,7 @@ class RayTracing {
     this.srng = procgen.srng;
     this.options = options || {};
     this.func_collision = this.options.func_collision || ((element) => element.isFill());
+    this.func_negation = this.options.func_negation || ((element) => false);
     this.starting_point = this.options.starting_point || this._generatePoint();
     this.starting_direction = this.options.starting_direction || this._generateDirection();
     this.max_distance = this.options.max_distance ||
@@ -1372,7 +1370,8 @@ class RayTracing {
       let x = this.srng.randomFloat(0, this.saturn.width()-1);
       let y = this.srng.randomFloat(0, this.saturn.height()-1);
       let element = this.saturn.getAt(Math.floor(x), Math.floor(y), 0);
-      if (!this.func_collision(element)) {
+      if (!this.func_collision(element) &&
+	  !this.func_negation(element)) {
 	return [x, y];
       }
     }
@@ -1411,16 +1410,21 @@ class RayTracing {
     return p;
   }
 
+  // Returns null if func_negation --> true
   getRayCollision() {
     let element = null;
     while(this._getDistance() < this.max_distance) {
       this._propagateRay();
       element = this.locateElement(this.current_point[0],
 				   this.current_point[1]);
-      if (this.current_element !== element &&
-	  this.func_collision(element)) {
+      if (this.current_element !== element) {
 	this.current_element = element;
-	return element;
+	if (this.func_collision(element)) {
+	  return element;
+	}
+	else if (this.func_negation(element)) {
+	  return null;
+	}
       }
     }
     return element;
@@ -1484,7 +1488,11 @@ class MountainPlacement {
     if (!this.enabled) return;
     for (let i = 0; i < this.num_mountains; i++) {
       let checkCollision = (element) => ["floor", "cover"].includes(element.getType());
-      let raytracing = new RayTracing(this.procgen, {func_collision: checkCollision});
+      let checkNegation = (element) => ["fill"].includes(element.getType());
+      let raytracing = new RayTracing(this.procgen, {
+	func_collision: checkCollision,
+	func_negation: checkNegation,
+      });
       let element = raytracing.getRayCollision();
       if (element !== null && checkCollision(element)) {
 	element.mountain();
@@ -1584,7 +1592,7 @@ let args = process.argv;
 let seed = args.length > 2 ? args[2] : null;
 let procgen = new ProcGen(seed, {
   RoomPlacement: {
-    num_rooms: 6,
+    num_rooms: 8,
   },
   CellularAutomata: {
     Splotch: {
