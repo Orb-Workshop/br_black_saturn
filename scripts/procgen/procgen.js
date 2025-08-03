@@ -460,7 +460,7 @@ class Pathfinding {
     let other_element = saturn2D.getAt(x, y-1);
     this._compareElements(element, other_element);
   }
-
+ 
   _scoreRight(saturn2D, x, y) {
     if (x >= (saturn2D.width()-1)) return;
     let element = saturn2D.getAt(x, y);
@@ -1461,17 +1461,69 @@ class WindowPlacement {
     this.options = options || {};
     this.enabled = (this.options.enabled !== undefined) ? this.options.enabled : true;
     this.num_windows = this.options.num_windows || 10;
-    
+    this.penetration = this.options.penetration || 1;
+  }
+
+  _cellAutomata_WindowExpand() {
+    this.saturn.forEachIndex((i, j, k) => {
+      if (k > 0) return;
+      let element = this.saturn.getAt(i,j,0);
+      if (!element.isWindow()) return;
+      if (i <= 0 || i >= this.saturn.width()-1) return;
+      if (j <= 0 || j >= this.saturn.height()-1) return;
+
+      // Vertical
+      if (element.up().isFill() && element.down().isFill()) {
+	element.up().window();
+	element.down().window();
+      }
+      // Horizontal
+      else if (element.left().isFill() && element.right().isFill()) {
+	element.left().window();
+	element.right().window();
+      }
+      // Corner Up-Left
+      else if (element.down().isFill() && element.right().isFill()) {
+	element.down().window();
+	element.right().window();
+      }
+      // Corner Up-Right
+      else if (element.down().isFill() && element.left().isFill()) {
+	element.down().window();
+	element.left().window();
+      }
+      // Corner Down-Left
+      else if (element.up().isFill() && element.right().isFill()) {
+	element.up().window();
+	element.right().window();
+      }
+      // Corner Down-Right
+      else if (element.up().isFill() && element.left().isFill()) {
+	element.up().window();
+	element.left().window();
+      }
+    });
   }
 
   process() {
     if (!this.enabled) return;
-    for (let i = 0; i < this.num_windows; i++) {
+    // Number of iterations is based on the number of rays and it's level of penetration.
+    let num_iterations = Math.ceil(this.num_windows / this.penetration);
+    for (let i = 0; i < num_iterations; i++) {
       let raytracing = new RayTracing(this.procgen, {func_collision: ((e) => e.isFill())});
-      // Collide rays against the side of the buildings to make windows.
-      let element = raytracing.getRayCollision();
-      if (element !== null && element.isFill()) element.window();
+      for (let p = 0; p < this.penetration; p++) {
+	// Collide rays against the side of the buildings to make windows.
+	let element = raytracing.getRayCollision();
+	if (element !== null && element.isFill()) element.window();
+      }
     }
+    this._cellAutomata_WindowExpand();
+  }
+}
+
+class SimplexNoise {
+  constructor(procgen, options) {
+    
   }
 }
 
@@ -1488,7 +1540,7 @@ class MountainPlacement {
     if (!this.enabled) return;
     for (let i = 0; i < this.num_mountains; i++) {
       let checkCollision = (element) => ["floor", "cover"].includes(element.getType());
-      let checkNegation = (element) => ["fill"].includes(element.getType());
+      let checkNegation = (element) => ["fill", "window"].includes(element.getType());
       let raytracing = new RayTracing(this.procgen, {
 	func_collision: checkCollision,
 	func_negation: checkNegation,
@@ -1610,11 +1662,12 @@ let procgen = new ProcGen(seed, {
     num_cover: 20,
   },
   WindowPlacement: {
-    num_windows: 20,
+    num_windows: 30,
+    penetration: 3,
   },
   MountainPlacement: {
     num_mountains: 4,
-  }
+  },
 })
 .process()
 .display2d();
