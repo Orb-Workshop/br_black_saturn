@@ -279,6 +279,35 @@ class BBox {
       return true;
     return false;
   }
+
+  // Returns a new BBox expanded by xw*2 units on the x-axis and by
+  // yh*2 units on the y-axis around the center;
+  expand(xw, yh) {
+    let x = this.x - xw;
+    let y = this.y - yh;
+    let w = this.w + xw * 2;
+    let h = this.h + yh * 2;
+    return new BBox(x, y, w, h);
+  }
+
+  // Returns a new BBox contracted by xw*2 units on the x-axis and by
+  // yh*2 units on the y-axis around the center of the BBox.
+  contract(xw, yh) {
+    let x = this.x + xw;
+    let y = this.y + yh;
+    let w = this.w - xw * 2;
+    let h = this.h - yh * 2;
+    return new BBox(x, y, w, h);
+  }
+
+  // Return new BBox translated by (x, y) units.
+  translate(x, y) {
+    x = this.x + x;
+    y = this.y + y;
+    let w = this.w;
+    let h = this.h;
+    return new BBox(x, y, w, h);
+  }
 }
 
 
@@ -444,29 +473,30 @@ class PlayerSpawn {
   height() { return PLAYER_ELEMENT_BOUNDS[1]; }
 
   setEnabled() { this.enabled = true; };
+  isEnabled() { return this.enabled; }
   isDisabled() { return !this.enabled; }
 
   getPosition() {
-    return [this.x * this.cube_element.x,
-	    this.y * this.cube_element.y];
+    return [this.x + this.cube_element.x * CubeDimensions[0],
+	    this.y + this.cube_element.y * CubeDimensions[1]];
   }
 
   getValvePosition() {
-    return [this.x * this.cube_element.x * ElementDimensions[0],
-	    this.y * this.cube_element.y * ElementDimensions[1]];
+    return [this.x + this.cube_element.x * CubeDimensions[0] * ElementDimensions[0],
+	    this.y + this.cube_element.y * CubeDimensions[1] * ElementDimensions[1]];
   }
 
   getBBox() {
-    let x = this.x * this.cube_element.x;
-    let y = this.y * this.cube_element.y;
+    let x = this.x + this.cube_element.x * CubeDimensions[0];
+    let y = this.y + this.cube_element.y * CubeDimensions[1];
     let w = this.width();
     let h = this.height();
     return new BBox(x, y, w, h);
   }
 
   getValveBBox() {
-    let x = this.x * this.cube_element.x * ElementDimensions[0];
-    let y = this.y * this.cube_element.y * ElementDimensions[1];
+    let x = this.x + this.cube_element.x * CubeDimensions[0] * ElementDimensions[0];
+    let y = this.y + this.cube_element.y * CubeDimensions[1] * ElementDimensions[1];
     let w = this.width() * ElementDimensions[0];
     let h = this.height() * ElementDimensions[1];
     return new BBox(x, y, w, h);
@@ -726,6 +756,35 @@ class Saturn {
     return element;
   }
 
+  // Returns an array of all SaturnElements that make up the bbox.
+  // Notes:
+  // - z value is the full bound.
+  locateElementsByBBox(bbox) {
+    let x = bbox.x;
+    let y = bbox.y;
+    let w = bbox.w;
+    let h = bbox.h;
+    if (x > this.width() || y > this.height()) return [];
+    x = (x >= 0) ? x : 0;
+    x = Math.floor(x);
+    y = (y >= 0) ? y : 0;
+    y = Math.floor(y);
+    
+    w = (x+w) <= this.width() ? w : this.width()-x;
+    w = Math.floor(w);
+    h = (y+h) <= this.height() ? h : this.height()-y;
+    h = Math.floor(h);
+
+    let elements = [];
+    for (let k = 0; k < this.depth(); k++) {
+      for (let j = y; j < (x+h); j++) {
+	for (let i = x; i < (x+w); i++) {
+	  elements.push(this.getAt(i,j,k));
+	}
+      }
+    }
+    return elements;
+  }
   index(x, y, z) {
     let array_index = this.width() * (this.height() * z + y) + x;
     return array_index;
@@ -826,19 +885,6 @@ class Room {
     let y = this.y * ElementDimensions[1];
     let w = this.w * ElementDimensions[0];
     let h = this.h * ElementDimensions[1];
-    return new BBox(x, y, w, h);
-  }
-
-  // Exclude the Room Border.
-  getInnerBBox() {
-    return new BBox(this.x+1,this.y+1,this.w-1, this.h-1);
-  }
-
-  getInnerValveBBox() {
-    let x = (this.x+1) * ElementDimensions[0];
-    let y = (this.y+1) * ElementDimensions[1];
-    let w = (this.w-1) * ElementDimensions[0];
-    let h = (this.h-1) * ElementDimensions[1];
     return new BBox(x, y, w, h);
   }
 }
@@ -2142,37 +2188,44 @@ class PlayerPlacement {
   
   process() {
     if (!this.enabled) return;
-    let placed_rooms_clone = this.procgen.roomPlacement.getPlacedRooms().map((i) => i);
-    if (placed_rooms_clone.length < this.num_player_spawns)
-      throw new Error(
-	"Number of Placed Rooms is less than the number of Player Spawns.");
+    let num_current_spawns = 0;
     let player_spawns = [];
     this.saturn.cubes.forEachIndex((i, j) => {
-      let cube = this.saturn.cubes.getAt(i,j);
-      player_spawns = player_spawns.concat(cube.getPlayerSpawns());
+      player_spawns = player_spawns.concat(this.saturn.cubes.getAt(i, j).getPlayerSpawns());
     });
-
-    let num_current_spawns = 0;
-    let bHit = false;
-    while (num_current_spawns < this.num_player_spawns) {
-      bHit = false;
-      player_spawns = this.srng.randomShuffle(
-	player_spawns.filter((p) => p.isDisabled()));
-      let room = this.srng.randomChoice(placed_rooms_clone, true);
-      console.log("Room: ", room.getBBox());
-      for (let pi = 0; pi < player_spawns.length; pi++) {
-	let player = player_spawns[pi];
-	console.log("Player: ", player.getBBox());
-
-	if (player.getBBox().checkInside(room.getBBox())) {
-	  bHit = true;
-	  num_current_spawns += 1;
-	  player.setEnabled();
+    // Random Shuffle our player_spawns
+    player_spawns = this.srng.randomShuffle(player_spawns);
+    for (let pi = 0; pi < player_spawns.length; pi++) {
+      let player = player_spawns[pi];
+      
+      // Check to see if it sits on a floor big enough to accommodate
+      // the player spawn.
+      let elements = this.saturn.locateElementsByBBox(player.getBBox());
+      if (elements.some((e) => !e.isFloor())) continue;
+      
+      // Check if the player spawn collides with other player spawns that have already been chosen.
+      let enabled_players = player_spawns.filter((p) => p.isEnabled());
+      let bIntersectingPlayers = false;
+      for (let epi = 0; epi < enabled_players.length; epi++) {
+	let eplayer = enabled_players[epi];
+	if (player.getBBox().expand(4, 4).checkIntersection(eplayer.getBBox().expand(4, 4))) {
+	  bIntersectingPlayers = true;
 	  break;
 	}
       }
-      if (!bHit) throw new Error("Unable to Find Suitable Player Spawn Location");
+      if (bIntersectingPlayers) continue;
+      else {
+	player.setEnabled();
+	num_current_spawns += 1;
+      }
+      if (num_current_spawns >= this.num_player_spawns)
+	break;
     }
+    if (num_current_spawns < this.num_player_spawns)
+      throw new Error("Could not satisfy player spawns.");
+    
+    console.log("Enabled Players: ",
+		player_spawns.filter((p) => p.isEnabled()));
   }
 }
 
@@ -2271,7 +2324,7 @@ if (require.main === module) {
   let seed = args.length > 2 ? args[2] : null;
   let procgen = new ProcGen(seed, {
     RoomPlacement: {
-      num_rooms: 8,
+      num_rooms: 6,
     },
     CellularAutomata: {
       Splotch: {
@@ -2296,10 +2349,9 @@ if (require.main === module) {
       num_mountains: 4,
     },
     PlayerPlacement: {
-      enabled: false,
+      enabled: true,
     },
   }).process().display2d();
-
 
   // let voronoiDiagram = new VoronoiDiagram(procgen);
   // let getCenterAt = (x, y) => procgen.saturn.getAt(x, y, 0).getBBox().center();
