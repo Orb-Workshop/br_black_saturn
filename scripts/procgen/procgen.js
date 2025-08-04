@@ -1692,6 +1692,27 @@ class SimplexNoise {
 
     return 70.0 * (n0 + n1 + n2);
   }
+
+  constructor(procgen, options) {
+    this.procgen = procgen;
+    this.saturn = procgen.saturn;
+    this.options = options || {};
+    this.resolution = this.options.resolution || [1., 1.];
+    this.offset = this.options.offset || [0., 0.];
+  }
+
+  // f(x, y, noise), noise -> (-1.0, 1.0)
+  forEachNoiseIndex(f) {
+    let w = this.saturn.width();
+    let h = this.saturn.height();
+    for (let j = 0; j < h; j++) {
+      for (let i = 0; i < w; i++) {
+	let xn = i / w * this.resolution[0] + this.offset[0];
+	let yn = j / h * this.resolution[1] + this.offset[1];
+	f(i, j, SimplexNoise.noise(xn, yn));
+      }
+    }
+  }
 }
 
 // Voronoi Implementation
@@ -2063,4 +2084,16 @@ if (require.main === module) {
   voronoiDiagram.compute(points);
   //console.log(voronoiDiagram.getEquidistantVertices());
   //console.log(voronoiDiagram.getEquidistantElements());
+
+  // Simplex Test
+  let simplex = new SimplexNoise(procgen, {
+    resolution: [10, 10],
+    offset: [0., 0.],
+  });
+  
+  simplex.forEachNoiseIndex((i, j, noise) => {
+    if (i != 0) return;
+    console.log(noise);
+  });
+
 } // END if (require.main === module) {
