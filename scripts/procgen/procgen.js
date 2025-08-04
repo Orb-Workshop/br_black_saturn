@@ -435,8 +435,9 @@ class SaturnElement {
 
 const PLAYER_ELEMENT_BOUNDS = [2, 2];
 class PlayerSpawn {
-  constructor(saturn, x, y) {
-    this.saturn = saturn;
+  constructor(cube_element, x, y) {
+    this.cube_element = cube_element;
+    this.saturn = cube_element.saturn;
     this.x = x;
     this.y = y;
     this.enabled = false;
@@ -448,15 +449,27 @@ class PlayerSpawn {
   setEnabled() { this.enabled = true; };
   isDisabled() { return !this.enabled; }
 
+  getPosition() {
+    return [this.x * this.cube_element.x,
+	    this.y * this.cube_element.y];
+  }
+
+  getValvePosition() {
+    return [this.x * this.cube_element.x * ElementDimensions[0],
+	    this.y * this.cube_element.y * ElementDimensions[1]];
+  }
+
   getBBox() {
+    let x = this.x * this.cube_element.x;
+    let y = this.y * this.cube_element.y;
     let w = this.width();
     let h = this.height();
-    return new BBox(this.x, this.y, w, h);
+    return new BBox(x, y, w, h);
   }
 
   getValveBBox() {
-    let x = this.x * ElementDimensions[0];
-    let y = this.y * ElementDimensions[1];
+    let x = this.x * this.cube_element.x * ElementDimensions[0];
+    let y = this.y * this.cube_element.y * ElementDimensions[1];
     let w = this.width() * ElementDimensions[0];
     let h = this.height() * ElementDimensions[1];
     return new BBox(x, y, w, h);
@@ -465,15 +478,16 @@ class PlayerSpawn {
 
 // Individual Cube Elements that make up Saturn's Cube.
 class SaturnCubeElement {
-  constructor(saturn, x, y) {
-    this.saturn = saturn;
+  constructor(cube, x, y) {
+    this.cube = cube;
+    this.saturn = cube.saturn;
     this.x = x;
     this.y = y;
     this.player_spawns = [
-      new PlayerSpawn(this.saturn, 12, 12),
-      new PlayerSpawn(this.saturn, 36, 12),
-      new PlayerSpawn(this.saturn, 12, 36),
-      new PlayerSpawn(this.saturn, 36, 36),
+      new PlayerSpawn(this, 2, 2),
+      new PlayerSpawn(this, 6, 2),
+      new PlayerSpawn(this, 2, 6),
+      new PlayerSpawn(this, 6, 6),
     ];
   }
 
@@ -506,7 +520,7 @@ class SaturnCube {
     this.saturn = saturn;
     this.elements = [];
     this.forEachIndex((i, j) => {
-      this.elements.push(new SaturnCubeElement(this.saturn, i, j));
+      this.elements.push(new SaturnCubeElement(this, i, j));
     });
   }
 
@@ -2143,22 +2157,29 @@ class PlayerPlacement {
     let player_spawns = [];
     this.saturn.cubes.forEachIndex((i, j) => {
       let cube = this.saturn.cubes.getAt(i,j);
-      player_spawns.concat(cube.getPlayerSpawns());
+      player_spawns = player_spawns.concat(cube.getPlayerSpawns());
     });
 
     let num_current_spawns = 0;
+    let bHit = false;
     while (num_current_spawns < this.num_player_spawns) {
+      bHit = false;
       player_spawns = this.srng.randomShuffle(
 	player_spawns.filter((p) => p.isDisabled()));
       let room = this.srng.randomChoice(placed_rooms_clone, true);
+      console.log("Room: ", room.getBBox());
       for (let pi = 0; pi < player_spawns.length; pi++) {
 	let player = player_spawns[pi];
+	console.log("Player: ", player.getBBox());
+
 	if (player.getBBox().checkInside(room.getBBox())) {
+	  bHit = true;
 	  num_current_spawns += 1;
 	  player.setEnabled();
 	  break;
 	}
       }
+      if (!bHit) throw new Error("Unable to Find Suitable Player Spawn Location");
     }
   }
 }
@@ -2283,7 +2304,7 @@ if (require.main === module) {
       num_mountains: 4,
     },
     PlayerPlacement: {
-      enabled: false,
+      enabled: true,
     },
   }).process().display2d();
 
