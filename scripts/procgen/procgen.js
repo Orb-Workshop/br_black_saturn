@@ -186,6 +186,31 @@ class SeededRandomNumberGenerator {
   randomInteger(start, end) {
     return Math.round(this.randomFloat(start, end));
   }
+
+  // Returns a random choice from an array.
+  // if `bDelete`, remove the element from the array.
+  randomChoice(array, bDelete) {
+    let idx = this.randomInteger(0, array.length-1);
+    let result = array[idx];
+    if (bDelete) array.splice(idx, 1);
+    return result;
+  }
+
+  // Returns a random combination of values from the `array` as a
+  // choice of values of size `count`
+  // if `bDelete`, remove the elements from the array.
+  randomCombination(array, count, bDelete) {
+    let a = null;
+    if (bDelete) a = array;
+    else a = DeepCopy(array);
+    let result = [];
+    for (let c = 0; c < count; c++) {
+      let idx = this.randomInteger(0, a.length-1);
+      result.push(a[idx]);
+      a.splice(idx, 1);
+    }
+    return result;
+  }
 }
 
 class Point {
@@ -195,7 +220,7 @@ class Point {
   } 
 }
 
-// Bounding Box
+// Bounding Box 2D
 class BBox {
   constructor(x, y, w, h) {
     this.x = x;
@@ -207,6 +232,26 @@ class BBox {
   center() {
     return new Point(this.x+this.h/2.,
 		     this.y+this.w/2.);
+  }
+
+  check_intersection(bbox) {
+    // Box A
+    let aMinX = this.x;
+    let aMinY = this.y;
+    let aMaxX = this.x + this.w;
+    let aMaxY = this.x + this.h;
+
+    // Box B
+    let bMinX = bbox.x;
+    let bMinY = bbox.y;
+    let bMaxX = bbox.x + bbox.w;
+    let bMaxY = bbox.y + bbox.h;
+
+    if (aMinX <= bMaxX && aMaxX >= bMinX &&
+        aMinY <= bMaxY && aMaxY >= bMinY) {
+      return true;
+    }
+    return false;
   }
 }
 
@@ -246,6 +291,9 @@ class SaturnElement {
     element_clone.setType(this.getType());
     return element_clone;
   }
+
+  width() { return 1; }
+  height() { return 1; }
 
   getType() { return this.type; }
   setType(_type) { this.type = _type; }
@@ -356,13 +404,65 @@ class SaturnElement {
   }
 }
 
+const PLAYER_ELEMENT_BOUNDS = [2, 2];
+class PlayerSpawn {
+  constructor(saturn, x, y) {
+    this.saturn = saturn;
+    this.x = x;
+    this.y = y;
+    this.enabled = false;
+  }
+
+  width() { return PLAYER_ELEMENT_BOUNDS[0]; }
+  height() { return PLAYER_ELEMENT_BOUNDS[1]; }
+
+  getBBox() {
+    let w = this.width();
+    let h = this.height();
+    return new BBox(this.x, this.y, w, h);
+  }
+
+  getValveBBox() {
+    let x = this.x * ElementDimensions[0];
+    let y = this.y * ElementDimensions[1];
+    let w = this.width() * ElementDimensions[0];
+    let h = this.height() * ElementDimensions[1];
+    return new BBox(x, y, w, h);
+  }
+}
+
 // Individual Cube Elements that make up Saturn's Cube.
 class SaturnCubeElement {
   constructor(saturn, x, y) {
     this.saturn = saturn;
     this.x = x;
     this.y = y;
-    this.player_spawn = false;
+    this.player_spawns = [
+      new PlayerSpawn(this.saturn, 12, 12),
+      new PlayerSpawn(this.saturn, 36, 12),
+      new PlayerSpawn(this.saturn, 12, 36),
+      new PlayerSpawn(this.saturn, 36, 36),
+    ];
+  }
+
+  width() { return CubeDimensions[0]; }
+  height() { return CubeDimensions[1]; }
+  depth() { return CubeDimensions[2]; }
+
+  getBBox() {
+    let x = this.x * this.width();
+    let y = this.y * this.height();
+    let w = this.width();
+    let h = this.height();
+    return new BBox(x, y, w, h);
+  }
+  
+  getValveBBox() {
+    let x = this.x * this.width() * ElementDimensions[0];
+    let y = this.y * this.height() * ElementDimensions[1];
+    let w = this.width() * ElementDimensions[0];
+    let h = this.height() * ElementDimensions[1];
+    return new BBox(x, y, w, h);
   }
 }
 
@@ -658,7 +758,26 @@ class Saturn {
 //
 // Room Placement
 //
+class Room {
+  constructor(x, y, w, h) {
+    this.x = x;
+    this.y = y;
+    this.w = w;
+    this.h = h;
+  }
 
+  getBBox() {
+    return new BBox(this.x, this.y, this.w, this.h);
+  }
+
+  getValveBBox() {
+    let x = this.x * ElementDimensions[0];
+    let y = this.y * ElementDimensions[1];
+    let w = this.w * ElementDimensions[0];
+    let h = this.h * ElementDimensions[1];
+    return new BBox(x, y, w, h);
+  }
+}
 
 const RP_DEFAULT_HALLWAY_WIDTH = 3;
 const RP_DEFAULT_CEILING_HEIGHT = 4;
@@ -717,12 +836,12 @@ class RoomPlacement {
 	this.srng.randomInteger(this.saturn.height()-1),
       ];
       
-      let room = {
-	x: room_position[0],
-	y: room_position[1],
-	w: room_dimensions[0],
-	h: room_dimensions[1],
-      };
+      let room = new Room(
+	room_position[0],
+	room_position[1],
+	room_dimensions[0],
+	room_dimensions[1],
+      );
 
       // Check if the room is within the world bounds.
       if ((room.x + room.w) > this.saturn.width() ||
@@ -1709,7 +1828,7 @@ class SimplexNoise {
       for (let i = 0; i < w; i++) {
 	let xn = i / w * this.resolution[0] + this.offset[0];
 	let yn = j / h * this.resolution[1] + this.offset[1];
-	f(i, j, SimplexNoise.noise(xn, yn));
+	f.bind(this)(i, j, SimplexNoise.noise(xn, yn));
       }
     }
   }
@@ -1958,6 +2077,19 @@ class MountainPlacement {
   }
 }
 
+class PlayerPlacement {
+  constructor(procgen, options) {
+    this.procgen = procgen;
+    this.saturn = procgen.saturn;
+    this.options = options || {};
+    this.num_player_spawns = this.options.num_player_spawns || 6;
+  }
+  
+  process() {
+    
+  }
+}
+
 // Combine Techniques...
 class ProcGen {
   constructor(seed, options) {
@@ -2000,6 +2132,11 @@ class ProcGen {
       this.options.MountainPlacement,
     );
 
+    this.playerPlacement = new PlayerPlacement(
+      this,
+      this.options.PlayerPlacement,
+    );
+
     return this;
   }
 
@@ -2025,6 +2162,9 @@ class ProcGen {
 
     // Stage 6 - Raycast a starting point, and splotch some mountains.
     this.mountainPlacement.process();
+
+    // Stage 7 - Determine Player Spawn Placement based on room availability
+    this.playerPlacement.process();
 
     return this;
   }
@@ -2069,6 +2209,9 @@ if (require.main === module) {
     MountainPlacement: {
       num_mountains: 4,
     },
+    PlayerPlacement: {
+      
+    },
   }).process().display2d();
 
 
@@ -2083,17 +2226,18 @@ if (require.main === module) {
 
   voronoiDiagram.compute(points);
   //console.log(voronoiDiagram.getEquidistantVertices());
-  //console.log(voronoiDiagram.getEquidistantElements());
+
 
   // Simplex Test
-  let simplex = new SimplexNoise(procgen, {
-    resolution: [10, 10],
-    offset: [0., 0.],
-  });
+
+  // let simplex = new SimplexNoise(procgen, {
+  //   resolution: [10, 10],
+  //   offset: [0., 0.],
+  // });
   
-  simplex.forEachNoiseIndex((i, j, noise) => {
-    if (i != 0) return;
-    console.log(noise);
-  });
+  // simplex.forEachNoiseIndex((i, j, noise) => {
+  //   if (i != 0) return;
+  //   console.log(noise);
+  // });
 
 } // END if (require.main === module) {
