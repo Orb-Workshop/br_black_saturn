@@ -211,6 +211,23 @@ class SeededRandomNumberGenerator {
     }
     return result;
   }
+
+  // Shuffles the elements of an array.
+  // if `bCopy`, returns a new array.
+  randomShuffle(array, bCopy) {
+    let a = null;
+    if (bCopy) a = array.map((i) => i);
+    else a = array;
+    let cIdx = a.length;
+    while (cIdx !== 0) {
+      let rIdx = this.randomInteger(0, cIdx);
+      cIdx -= 1;
+      let swp = a[cIdx];
+      a[cIdx] = a[rIdx];
+      a[rIdx] = swp;
+    }
+    return a;
+  }
 }
 
 class Point {
@@ -234,7 +251,7 @@ class BBox {
 		     this.y+this.w/2.);
   }
 
-  check_intersection(bbox) {
+  checkIntersection(bbox) {
     // Box A
     let aMinX = this.x;
     let aMinY = this.y;
@@ -251,6 +268,18 @@ class BBox {
         aMinY <= bMaxY && aMaxY >= bMinY) {
       return true;
     }
+    return false;
+  }
+
+  checkInside(bbox) {
+    let innerBox = this;
+    let outerBox = bbox;
+
+    if (innerBox.x >= outerBox.x &&
+        innerBox.y >= outerBox.y &&
+        (innerBox.x + innerBox.w) <= (outerBox.x + outerBox.w) &&
+        (innerBox.y + innerBox.h) <= (outerBox.y + outerBox.h))
+      return true;
     return false;
   }
 }
@@ -416,6 +445,9 @@ class PlayerSpawn {
   width() { return PLAYER_ELEMENT_BOUNDS[0]; }
   height() { return PLAYER_ELEMENT_BOUNDS[1]; }
 
+  setEnabled() { this.enabled = true; };
+  isDisabled() { return !this.enabled; }
+
   getBBox() {
     let w = this.width();
     let h = this.height();
@@ -464,6 +496,8 @@ class SaturnCubeElement {
     let h = this.height() * ElementDimensions[1];
     return new BBox(x, y, w, h);
   }
+
+  getPlayerSpawns() { return this.player_spawns; }
 }
 
 // Handles the 'Cube' elements that comprise the map.
@@ -493,11 +527,11 @@ class SaturnCube {
   }
 
   getAt(x, y) {
-    return this.cubes[this.index(x, y)];
+    return this.elements[this.index(x, y)];
   }
 
   getAtIndex(idx) {
-    return this.cubes[idx];
+    return this.elements[idx];
   }
 }
 
@@ -775,6 +809,19 @@ class Room {
     let y = this.y * ElementDimensions[1];
     let w = this.w * ElementDimensions[0];
     let h = this.h * ElementDimensions[1];
+    return new BBox(x, y, w, h);
+  }
+
+  // Exclude the Room Border.
+  getInnerBBox() {
+    return new BBox(this.x+1,this.y+1,this.w-1, this.h-1);
+  }
+
+  getInnerValveBBox() {
+    let x = (this.x+1) * ElementDimensions[0];
+    let y = (this.y+1) * ElementDimensions[1];
+    let w = (this.w-1) * ElementDimensions[0];
+    let h = (this.h-1) * ElementDimensions[1];
     return new BBox(x, y, w, h);
   }
 }
@@ -2081,12 +2128,38 @@ class PlayerPlacement {
   constructor(procgen, options) {
     this.procgen = procgen;
     this.saturn = procgen.saturn;
+    this.srng = procgen.srng;
     this.options = options || {};
+    this.enabled = (this.options.enabled !== undefined) ? this.options.enabled : true;
     this.num_player_spawns = this.options.num_player_spawns || 6;
   }
   
   process() {
-    
+    if (!this.enabled) return;
+    let placed_rooms_clone = this.procgen.roomPlacement.getPlacedRooms().map((i) => i);
+    if (placed_rooms_clone.length < this.num_player_spawns)
+      throw new Error(
+	"Number of Placed Rooms is less than the number of Player Spawns.");
+    let player_spawns = [];
+    this.saturn.cubes.forEachIndex((i, j) => {
+      let cube = this.saturn.cubes.getAt(i,j);
+      player_spawns.concat(cube.getPlayerSpawns());
+    });
+
+    let num_current_spawns = 0;
+    while (num_current_spawns < this.num_player_spawns) {
+      player_spawns = this.srng.randomShuffle(
+	player_spawns.filter((p) => p.isDisabled()));
+      let room = this.srng.randomChoice(placed_rooms_clone, true);
+      for (let pi = 0; pi < player_spawns.length; pi++) {
+	let player = player_spawns[pi];
+	if (player.getBBox().checkInside(room.getBBox())) {
+	  num_current_spawns += 1;
+	  player.setEnabled();
+	  break;
+	}
+      }
+    }
   }
 }
 
@@ -2210,22 +2283,22 @@ if (require.main === module) {
       num_mountains: 4,
     },
     PlayerPlacement: {
-      
+      enabled: false,
     },
   }).process().display2d();
 
 
-  let voronoiDiagram = new VoronoiDiagram(procgen);
-  let getCenterAt = (x, y) => procgen.saturn.getAt(x, y, 0).getBBox().center();
-  let points = [
-    getCenterAt(12, 12),
-    getCenterAt(12, 36),
-    getCenterAt(36, 12),
-    getCenterAt(36, 36),
-  ];
+  // let voronoiDiagram = new VoronoiDiagram(procgen);
+  // let getCenterAt = (x, y) => procgen.saturn.getAt(x, y, 0).getBBox().center();
+  // let points = [
+  //   getCenterAt(12, 12),
+  //   getCenterAt(12, 36),
+  //   getCenterAt(36, 12),
+  //   getCenterAt(36, 36),
+  // ];
 
-  voronoiDiagram.compute(points);
-  //console.log(voronoiDiagram.getEquidistantVertices());
+  // voronoiDiagram.compute(points);
+  // console.log(voronoiDiagram.getEquidistantVertices());
 
 
   // Simplex Test
