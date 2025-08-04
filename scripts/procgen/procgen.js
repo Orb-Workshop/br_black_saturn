@@ -1,4 +1,4 @@
- //@ts-nocheck
+//@ts-nocheck
 //
 // Procedural Generation Library
 //
@@ -188,6 +188,28 @@ class SeededRandomNumberGenerator {
   }
 }
 
+class Point {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+  } 
+}
+
+// Bounding Box
+class BBox {
+  constructor(x, y, w, h) {
+    this.x = x;
+    this.y = y;
+    this.w = w;
+    this.h = h;
+  }
+
+  center() {
+    return new Point(this.x+this.h/2.,
+		     this.y+this.w/2.);
+  }
+}
+
 
 
 //
@@ -200,12 +222,13 @@ class SeededRandomNumberGenerator {
 // |   \
 // +    -
 
-let SaturnDimensions = [6, 6];       // [Width, Height]
-let CubeDimensions = [8, 8, 8];      // [Width, Height, Depth]
-let ElementWidth = SaturnDimensions[0] * CubeDimensions[0];
-let ElementHeight = SaturnDimensions[1] * CubeDimensions[1];
-let ElementDepth = CubeDimensions[2];
-let ElementDimensions = [ElementWidth, ElementHeight, ElementDepth];
+const SaturnCubeDimensions = [6, 6];       // [Width, Height], Number of Cubes
+const CubeDimensions = [8, 8, 8];      // [Width, Height, Depth], Number of Elements per Cube
+const SaturnWidth = SaturnCubeDimensions[0] * CubeDimensions[0];
+const SaturnHeight = SaturnCubeDimensions[1] * CubeDimensions[1];
+const SaturnDepth = CubeDimensions[2];
+const SaturnDimensions = [SaturnWidth, SaturnHeight, SaturnDepth];
+const ElementDimensions = [48, 48, 48];
 
 // Individual Elements that make up Saturn
 class SaturnElement {
@@ -228,6 +251,29 @@ class SaturnElement {
   setType(_type) { this.type = _type; }
   getParentCube() {
     return this.saturn.getCubeFromElement(this.x, this.y, this.z);
+  }
+
+  // BBox representing Element in 'valve units'
+  getValveBBox() {
+    let x = this.x * ElementDimensions[0];
+    let y = this.y * ElementDimensions[1];
+    let w = ElementDimensions[0];
+    let h = ElementDimensions[1];
+    return new BBox(x, y, w, h);
+  }
+
+  getBBox() {
+    return new BBox(this.x, this.y, 1, 1);
+  }
+
+  // Get the center of the Element represented in valve units.
+  getValveCenter() {
+    return this.getValveBBox().center();
+  }
+
+  // Get the center of the Element represented in saturn units.
+  getCenter() {
+    return this.getBBox().center();
   }
 
   fill() {
@@ -330,8 +376,8 @@ class SaturnCube {
     });
   }
 
-  width() { return SaturnDimensions[0]; }
-  height() { return SaturnDimensions[1]; }
+  width() { return SaturnCubeDimensions[0]; }
+  height() { return SaturnCubeDimensions[1]; }
   size() { return (this.width() * this.height()); }
   index(x, y) {
     let array_index = this.width() * y + x;
@@ -510,11 +556,29 @@ class Saturn {
     return this;
   }
 
-  width() { return ElementDimensions[0]; }
-  height() { return ElementDimensions[1]; }
-  depth() { return ElementDimensions[2]; }
+  width() { return SaturnDimensions[0]; }
+  height() { return SaturnDimensions[1]; }
+  depth() { return SaturnDimensions[2]; }
   size() {
     return (this.width() * this.height() * this.depth());
+  }
+
+  locateElement(x, y, z) {
+    x = (x >= 0) ? x : 0;
+    x = (x <= this.width()-1) ? x : this.width()-1;
+    x = Math.floor(x);
+
+    y = (y >= 0) ? y : 0;
+    y = (y <= this.height()-1) ? y : this.height()-1;
+    y = Math.floor(y);
+
+    z = (z !== undefined) ? z : 0;
+    z = (z >= 0) ? z : 0;
+    z = (z <= this.depth()-1) ? z : this.depth()-1;
+    z = Math.floor(z);
+
+    let element = this.getAt(x, y, z);
+    return element;
   }
 
   index(x, y, z) {
@@ -1344,27 +1408,9 @@ class RayTracing {
     this.propagation_distance = this.options.propagation_distance || 0.1;
 
     this.current_point = this.starting_point;
-    this.current_element = this.locateElement(this.starting_point[0], this.starting_point[1], 0);
+    this.current_element = this.saturn.locateElement(this.starting_point[0], this.starting_point[1], 0);
   }
 
-  locateElement(x, y, z) {
-    x = (x >= 0) ? x : 0;
-    x = (x <= this.saturn.width()-1) ? x : this.saturn.width()-1;
-    x = Math.floor(x);
-
-    y = (y >= 0) ? y : 0;
-    y = (y <= this.saturn.height()-1) ? y : this.saturn.height()-1;
-    y = Math.floor(y);
-
-    z = (z !== undefined) ? z : 0;
-    z = (z >= 0) ? z : 0;
-    z = (z <= this.saturn.depth()-1) ? z : this.saturn.depth()-1;
-    z = Math.floor(z);
-
-    let element = this.saturn.getAt(x, y, z);
-    return element;
-  }
-  
   _generatePoint() {
     while(true) {
       let x = this.srng.randomFloat(0, this.saturn.width()-1);
@@ -1415,8 +1461,8 @@ class RayTracing {
     let element = null;
     while(this._getDistance() < this.max_distance) {
       this._propagateRay();
-      element = this.locateElement(this.current_point[0],
-				   this.current_point[1]);
+      element = this.saturn.locateElement(this.current_point[0],
+					  this.current_point[1]);
       if (this.current_element !== element) {
 	this.current_element = element;
 	if (this.func_collision(element)) {
@@ -1708,12 +1754,12 @@ this.va=this.vb=null;};Voronoi.prototype.Halfedge=function(d,e,a){this.site=e;th
 }this.vertices.push(b);return b;};Voronoi.prototype.createEdge=function(e,a,d,b){var c=this.edgeJunkyard.pop();if(!c){c=new this.Edge(e,a);
 }else{c.lSite=e;c.rSite=a;c.va=c.vb=null;}this.edges.push(c);if(d){this.setEdgeStartpoint(c,e,a,d);}if(b){this.setEdgeEndpoint(c,e,a,b);
 }this.cells[e.voronoiId].halfedges.push(this.createHalfedge(c,e,a));this.cells[a.voronoiId].halfedges.push(this.createHalfedge(c,a,e));
-return c};Voronoi.prototype.createBorderEdge=function(d,c,a){var b=this.edgeJunkyard.pop();if(!b){b=new this.Edge(d,null);
+return c;};Voronoi.prototype.createBorderEdge=function(d,c,a){var b=this.edgeJunkyard.pop();if(!b){b=new this.Edge(d,null);
 }else{b.lSite=d;b.rSite=null;}b.va=c;b.vb=a;this.edges.push(b);return b;};Voronoi.prototype.setEdgeStartpoint=function(b,d,a,c){if(!b.va&&!b.vb){b.va=c;
 b.lSite=d;b.rSite=a;}else{if(b.lSite===a){b.vb=c;}else{b.va=c;}}};Voronoi.prototype.setEdgeEndpoint=function(b,d,a,c){this.setEdgeStartpoint(b,a,d,c);
 };Voronoi.prototype.Beachsection=function(){};Voronoi.prototype.createBeachsection=function(a){var b=this.beachsectionJunkyard.pop();
 if(!b){b=new this.Beachsection();}b.site=a;return b;};Voronoi.prototype.leftBreakPoint=function(e,f){var a=e.site,m=a.x,l=a.y,k=l-f;
-if(!k){return m}var n=e.rbPrevious;if(!n){return -Infinity;}a=n.site;var h=a.x,g=a.y,d=g-f;if(!d){return h;}var c=h-m,j=1/k-1/d,i=c/d;
+if(!k){return m;}var n=e.rbPrevious;if(!n){return -Infinity;}a=n.site;var h=a.x,g=a.y,d=g-f;if(!d){return h;}var c=h-m,j=1/k-1/d,i=c/d;
 if(j){return(-i+this.sqrt(i*i-2*j*(c*c/(-2*d)-g+d/2+l-k/2)))/j+m;}return(m+h)/2;};Voronoi.prototype.rightBreakPoint=function(b,c){var d=b.rbNext;
 if(d){return this.leftBreakPoint(d,c);}var a=b.site;return a.y===c?a.x:Infinity;};Voronoi.prototype.detachBeachsection=function(a){this.detachCircleEvent(a);
 this.beachline.rbRemoveNode(a);this.beachsectionJunkyard.push(a);};Voronoi.prototype.removeBeachsection=function(b){var a=b.circleEvent,j=a.x,h=a.ycenter,e=this.createVertex(j,h),f=b.rbPrevious,d=b.rbNext,l=[b],g=Math.abs;
@@ -1723,10 +1769,10 @@ l.push(c);this.detachBeachsection(c);c=d;}l.push(c);this.detachCircleEvent(c);va
 this.setEdgeStartpoint(c.edge,m.site,c.site,e);}m=l[0];c=l[k-1];c.edge=this.createEdge(m.site,c.site,undefined,e);this.attachCircleEvent(m);
 this.attachCircleEvent(c);};Voronoi.prototype.addBeachsection=function(l){var j=l.x,n=l.y;var p,m,v,q,o=this.beachline.root;
 while(o){v=this.leftBreakPoint(o,n)-j;if(v>1e-9){o=o.rbLeft;}else{q=j-this.rightBreakPoint(o,n);if(q>1e-9){if(!o.rbRight){p=o;
-break}o=o.rbRight;}else{if(v>-1e-9){p=o.rbPrevious;m=o;}else{if(q>-1e-9){p=o;m=o.rbNext;}else{p=m=o;}}break;}}}var e=this.createBeachsection(l);
+break;}o=o.rbRight;}else{if(v>-1e-9){p=o.rbPrevious;m=o;}else{if(q>-1e-9){p=o;m=o.rbNext;}else{p=m=o;}}break;}}}var e=this.createBeachsection(l);
 this.beachline.rbInsertSuccessor(p,e);if(!p&&!m){return;}if(p===m){this.detachCircleEvent(p);m=this.createBeachsection(p.site);
 this.beachline.rbInsertSuccessor(e,m);e.edge=m.edge=this.createEdge(p.site,e.site);this.attachCircleEvent(p);this.attachCircleEvent(m);
-return}if(p&&!m){e.edge=this.createEdge(p.site,e.site);return;}if(p!==m){this.detachCircleEvent(p);this.detachCircleEvent(m);
+return;}if(p&&!m){e.edge=this.createEdge(p.site,e.site);return;}if(p!==m){this.detachCircleEvent(p);this.detachCircleEvent(m);
 var h=p.site,k=h.x,i=h.y,t=l.x-k,r=l.y-i,a=m.site,c=a.x-k,b=a.y-i,u=2*(t*b-r*c),g=t*t+r*r,f=c*c+b*b,s=this.createVertex((b*g-r*f)/u+k,(t*f-c*g)/u+i);
 this.setEdgeStartpoint(m.edge,h,a,s);e.edge=this.createEdge(h,l,undefined,s);m.edge=this.createEdge(l,a,undefined,s);this.attachCircleEvent(p);
 this.attachCircleEvent(m);return;}};Voronoi.prototype.CircleEvent=function(){this.arc=null;this.rbLeft=null;this.rbNext=null;
@@ -1734,7 +1780,7 @@ this.rbParent=null;this.rbPrevious=null;this.rbRed=false;this.rbRight=null;this.
 if(!r||!o){return;}var k=r.site,u=i.site,c=o.site;if(k===c){return;}var t=u.x,s=u.y,n=k.x-t,l=k.y-s,f=c.x-t,e=c.y-s;var v=2*(n*e-l*f);
 if(v>=-2e-12){return;}var h=n*n+l*l,g=f*f+e*e,m=(e*h-l*g)/v,j=(n*g-f*h)/v,b=j+s;var q=this.circleEventJunkyard.pop();if(!q){q=new this.CircleEvent();
 }q.arc=i;q.site=u;q.x=m+t;q.y=b+this.sqrt(m*m+j*j);q.ycenter=b;i.circleEvent=q;var a=null,p=this.circleEvents.root;while(p){if(q.y<p.y||(q.y===p.y&&q.x<=p.x)){if(p.rbLeft){p=p.rbLeft;
-}else{a=p.rbPrevious;break}}else{if(p.rbRight){p=p.rbRight;}else{a=p;break;}}}this.circleEvents.rbInsertSuccessor(a,q);if(!a){this.firstCircleEvent=q;
+}else{a=p.rbPrevious;break;}}else{if(p.rbRight){p=p.rbRight;}else{a=p;break;}}}this.circleEvents.rbInsertSuccessor(a,q);if(!a){this.firstCircleEvent=q;
 }};Voronoi.prototype.detachCircleEvent=function(b){var a=b.circleEvent;if(a){if(!a.rbPrevious){this.firstCircleEvent=a.rbNext;
 }this.circleEvents.rbRemoveNode(a);this.circleEventJunkyard.push(a);b.circleEvent=null;}};Voronoi.prototype.connectEdge=function(l,a){var b=l.vb;
 if(!!b){return true;}var c=l.va,p=a.xl,n=a.xr,r=a.yt,d=a.yb,o=l.lSite,e=l.rSite,i=o.x,h=o.y,k=e.x,j=e.y,g=(i+k)/2,f=(h+j)/2,m,q;
@@ -1779,10 +1825,86 @@ this.reset();return g;};
 // END filename: rhill-voronoi-core.min.js
 //
 //
-class VoronoiDiagram {
-  
-}
 
+/*
+  Adapter for use with Saturn.
+  
+  Example:
+
+  let v = new VoronoiDiagram(procgen);
+  v.compute([new Point(24, 24),
+             new Point(12, 12)]);
+ */
+class VoronoiDiagram {
+  // Bounding Box Representing Valve Units
+  static bbox_valve = {
+    xl: 0,
+    xr: SaturnDimensions[0] * ElementDimensions[0],
+    yt: 0,
+    yb: SaturnDimensions[1] * ElementDimensions[1],
+  };
+
+  // Bounding Box Representing SaturnElement Units
+  static bbox_saturn = {
+    xl: 0,
+    xr: SaturnDimensions[0],
+    yt: 0,
+    yb: SaturnDimensions[1],
+  };
+
+  constructor(procgen, options) {
+    this.procgen = procgen;
+    this.saturn = procgen.saturn;
+    this.options = options || {};
+    this.valve_units = this.options.valve_units || false;
+    this.bbox = this.valve_units ?
+      VoronoiDiagram.bbox_valve : VoronoiDiagram.bbox_saturn;
+    this.voronoi = new Voronoi();
+    this.diagram = null;
+  }
+
+  _convertPointArrayToSites(point_array) {
+    let sites = [];
+    point_array.forEach((p) => sites.push({x: p.x, y: p.y}));
+    return sites;
+  }
+
+  compute(point_array) {
+    let sites = this._convertPointArrayToSites(point_array);
+    if (this.diagram) this.voronoi.recycle(this.diagram);
+    this.diagram = this.voronoi.compute(sites, this.bbox);
+  }
+
+  isComputed() { return this.diagram !== null; }
+
+  getRawDiagram() {
+    return this.diagram;
+  }
+
+  getCompleteEdges() {
+    if (!this.isComputed()) return null;
+    let edges = this.diagram.edges.filter((edge) => edge.rSite && edge.lSite);
+    return edges;
+  }
+
+  getEquidistantVertices() {
+    let onlyUnique = (value, index, array) => array.indexOf(value) === index;
+    let edges = this.getCompleteEdges();
+    return edges
+      .map((edge) => [edge.va, edge.vb])
+      .reduce((acc, edge_pair) => {
+	acc.push(edge_pair[0]);
+	acc.push(edge_pair[1]);
+	return acc;
+      }, [])
+      .filter(onlyUnique);
+  }
+
+  getEquidistantElements() {
+    let vectors = this.getEquidistantVertices();
+    return vectors.map((e) => this.saturn.locateElement(e.x, e.y));
+  }
+}
 
 class MountainPlacement {
   constructor(procgen, options) {
@@ -1897,35 +2019,48 @@ class ProcGen {
 //
 // BEGIN
 //
-let args = process.argv;
-let seed = args.length > 2 ? args[2] : null;
-let procgen = new ProcGen(seed, {
-  RoomPlacement: {
-    num_rooms: 8,
-  },
-  CellularAutomata: {
-    Splotch: {
-      cycles: 25,
+if (require.main === module) {
+  let args = process.argv;
+  let seed = args.length > 2 ? args[2] : null;
+  let procgen = new ProcGen(seed, {
+    RoomPlacement: {
+      num_rooms: 8,
     },
-    Solidify: {
-      cycles: 2,
-      threshold: 5,
+    CellularAutomata: {
+      Splotch: {
+	cycles: 25,
+      },
+      Solidify: {
+	cycles: 2,
+	threshold: 5,
+      },
     },
-  },
-  BridgePlacement: {
-    enabled: true,
-  },
-  CoverPlacement: {
-    num_cover: 20,
-  },
-  WindowPlacement: {
-    num_windows: 30,
-    penetration: 3,
-  },
-  MountainPlacement: {
-    num_mountains: 4,
-  },
-})
-.process()
-.display2d();
+    BridgePlacement: {
+      enabled: true,
+    },
+    CoverPlacement: {
+      num_cover: 20,
+    },
+    WindowPlacement: {
+      num_windows: 30,
+      penetration: 3,
+    },
+    MountainPlacement: {
+      num_mountains: 4,
+    },
+  }).process().display2d();
 
+
+  let voronoiDiagram = new VoronoiDiagram(procgen);
+  let getCenterAt = (x, y) => procgen.saturn.getAt(x, y, 0).getBBox().center();
+  let points = [
+    getCenterAt(12, 12),
+    getCenterAt(12, 36),
+    getCenterAt(36, 12),
+    getCenterAt(36, 36),
+  ];
+
+  voronoiDiagram.compute(points);
+  //console.log(voronoiDiagram.getEquidistantVertices());
+  //console.log(voronoiDiagram.getEquidistantElements());
+} // END if (require.main === module) {
