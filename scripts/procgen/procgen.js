@@ -253,32 +253,29 @@ class BBox {
 
   checkIntersection(bbox) {
     // Box A
-    let aMinX = this.x;
-    let aMinY = this.y;
-    let aMaxX = this.x + this.w;
-    let aMaxY = this.x + this.h;
+    let a_min_x = this.x;
+    let a_max_x = this.x + this.w;
+    let a_min_y = this.y;
+    let a_max_y = this.x + this.h;
 
     // Box B
-    let bMinX = bbox.x;
-    let bMinY = bbox.y;
-    let bMaxX = bbox.x + bbox.w;
-    let bMaxY = bbox.y + bbox.h;
+    let b_min_x = bbox.x;
+    let b_max_x = bbox.x + bbox.w;
+    let b_min_y = bbox.y;
+    let b_max_y = bbox.y + bbox.h;
 
-    if (aMinX <= bMaxX && aMaxX >= bMinX &&
-        aMinY <= bMaxY && aMaxY >= bMinY) {
-      return true;
-    }
-    return false;
+    return !(a_max_x < b_min_x || a_min_x > b_max_x ||
+	     a_max_y < b_min_y || a_min_y > b_max_y);
   }
 
-  checkInside(bbox) {
-    let innerBox = this;
-    let outerBox = bbox;
+  checkInside(ibbox) {
+    let inner_box = ibbox;
+    let outer_box = this;
 
-    if (innerBox.x >= outerBox.x &&
-        innerBox.y >= outerBox.y &&
-        (innerBox.x + innerBox.w) <= (outerBox.x + outerBox.w) &&
-        (innerBox.y + innerBox.h) <= (outerBox.y + outerBox.h))
+    if (inner_box.x >= outer_box.x &&
+        inner_box.y >= outer_box.y &&
+        (inner_box.x + inner_box.w) <= (outer_box.x + outer_box.w) &&
+        (inner_box.y + inner_box.h) <= (outer_box.y + outer_box.h))
       return true;
     return false;
   }
@@ -752,6 +749,22 @@ class Saturn {
     return this.elements[idx];
   }
 
+  getBBox() {
+    let x = 0;
+    let y = 0;
+    let w = this.width();
+    let h = this.height();
+    return new BBox(x, y, w, h);
+  }
+
+  getValveBBox() {
+    let x = 0;
+    let y = 0;
+    let w = this.width() * ElementDimensions[0];
+    let h = this.height() * ElementDimensions[1];
+    return new BBox(x, y, w, h);
+  }
+
   // Get the parent cube based on an element index.
   getCubeFromElement(x, y, z) {
     let cubeX = Math.floor(x / this.cubes.width());
@@ -765,29 +778,15 @@ class Saturn {
     for (let j = 0; j < this.height(); j++) {
       for (let i = 0; i < this.width(); i++) {
 	let element = this.getAt(i,j,0);
-	if (element.getType() == "fill") {
-	  s += "X";
-	}
-	else if (element.getType() == "floor") {
-	  s += ".";
-	}
-	else if (element.getType() == "bridge") {
-	  s += "b";
-	}
-	else if (element.getType() == "empty") {
-	  s += " ";
-	}
-	else if (element.getType() == "cover") {
-	  s += "c";
-	}
-	else if (element.getType() == "window") {
-	  s += "W";
-	}
-	else if (element.getType() == "mountain") {
-	  s += "M";
-	}
-	else {
-	  s += "?";
+	switch(element.getType()) {
+	  case "fill":    s += "X"; break;
+	  case "floor":   s += "."; break;
+	  case "bridge":  s += "b"; break;
+	  case "empty":   s += " "; break;
+	  case "cover":   s += "c"; break;
+	  case "window":  s += "W"; break;
+	  case "mountain":s += "M"; break;
+	  default:        s += "?"; break;
 	}
       }
       s += "\n";
@@ -815,7 +814,11 @@ class Room {
   }
 
   getBBox() {
-    return new BBox(this.x, this.y, this.w, this.h);
+    let x = this.x;
+    let y = this.y;
+    let w = this.w;
+    let h = this.h;
+    return new BBox(x, y, w, h);
   }
 
   getValveBBox() {
@@ -904,28 +907,17 @@ class RoomPlacement {
 	room_dimensions[1],
       );
 
-      // Check if the room is within the world bounds.
-      if ((room.x + room.w) > this.saturn.width() ||
-	  (room.y + room.h) > this.saturn.height())
-	continue;
+      if (!this.saturn.getBBox().checkInside(room.getBBox()))
+       	continue;
       
       // Check if it can co-exist with other placed rooms
       let bCollision = false;
       for (let i = 0; i < this.placed_rooms.length; i++) {
 	let placed_room = this.placed_rooms[i];
-	// BB Checks
-
-	// x-overlap
-	if ((room.x + room.w) < placed_room.x ||
-	    room.x > (placed_room.x + placed_room.w))
-	  continue;
-
-	// y-overlap
-	if ((room.y + room.h) < placed_room.y ||
-	    room.y > (placed_room.y + placed_room.h))
-	  continue;
-
-	bCollision = true;
+	if (room.getBBox().checkIntersection(placed_room.getBBox())) {
+	  bCollision = true;
+	  break;
+	}
       }
       if (!bCollision) this.placed_rooms.push(room);
     }
@@ -2102,8 +2094,8 @@ class VoronoiDiagram {
   }
 
   getEquidistantElements() {
-    let vectors = this.getEquidistantVertices();
-    return vectors.map((e) => this.saturn.locateElement(e.x, e.y));
+    let vertices = this.getEquidistantVertices();
+    return vertices.map((v) => this.saturn.locateElement(v.x, v.y));
   }
 }
 
@@ -2304,7 +2296,7 @@ if (require.main === module) {
       num_mountains: 4,
     },
     PlayerPlacement: {
-      enabled: true,
+      enabled: false,
     },
   }).process().display2d();
 
