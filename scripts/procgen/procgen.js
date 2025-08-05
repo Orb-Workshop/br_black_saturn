@@ -758,8 +758,8 @@ class Saturn {
 
   // Returns an array of all SaturnElements that make up the bbox.
   // Notes:
-  // - z value is the full bound.
-  locateElementsByBBox(bbox) {
+  // - z value is fully bound for z > 0 if `bIncludeDepth`
+  locateElementsByBBox(bbox, bIncludeDepth) {
     let x = bbox.x;
     let y = bbox.y;
     let w = bbox.w;
@@ -777,14 +777,18 @@ class Saturn {
 
     let elements = [];
     for (let k = 0; k < this.depth(); k++) {
-      for (let j = y; j < (x+h); j++) {
+      for (let j = y; j < (y+h); j++) {
 	for (let i = x; i < (x+w); i++) {
-	  elements.push(this.getAt(i,j,k));
+	  if (bIncludeDepth && k !== 0)
+	    elements.push(this.getAt(i,j,k));
+	  else if (k === 0)
+	    elements.push(this.getAt(i,j,k));
 	}
       }
     }
     return elements;
   }
+
   index(x, y, z) {
     let array_index = this.width() * (this.height() * z + y) + x;
     return array_index;
@@ -2195,6 +2199,7 @@ class PlayerPlacement {
     });
     // Random Shuffle our player_spawns
     player_spawns = this.srng.randomShuffle(player_spawns);
+    let bChk = false;
     for (let pi = 0; pi < player_spawns.length; pi++) {
       let player = player_spawns[pi];
       
@@ -2208,7 +2213,7 @@ class PlayerPlacement {
       let bIntersectingPlayers = false;
       for (let epi = 0; epi < enabled_players.length; epi++) {
 	let eplayer = enabled_players[epi];
-	if (player.getBBox().expand(4, 4).checkIntersection(eplayer.getBBox().expand(4, 4))) {
+	if (player.getBBox().expand(5, 5).checkIntersection(eplayer.getBBox().expand(5, 5))) {
 	  bIntersectingPlayers = true;
 	  break;
 	}
@@ -2225,7 +2230,7 @@ class PlayerPlacement {
       throw new Error("Could not satisfy player spawns.");
     
     console.log("Enabled Players: ",
-		player_spawns.filter((p) => p.isEnabled()));
+		player_spawns.filter((p) => p.isEnabled()).map((p) => p.getBBox()));
   }
 }
 
@@ -2285,7 +2290,6 @@ class ProcGen {
 
     // Stage 2 - Cellular Automata, Splotch the center of the
     // map. Join the rooms. Solidify.
-
     this.cellularAutomata.process();
 
     // Stage 3 - Build bridges from rooms with a emphasis on building
@@ -2302,7 +2306,7 @@ class ProcGen {
     // Stage 6 - Raycast a starting point, and splotch some mountains.
     this.mountainPlacement.process();
 
-    // Stage 7 - Determine Player Spawn Placement based on room availability
+    // Stage 7 - Determine Player Spawn Placement
     this.playerPlacement.process();
 
     return this;
