@@ -2189,48 +2189,91 @@ class PlayerPlacement {
     this.enabled = (this.options.enabled !== undefined) ? this.options.enabled : true;
     this.num_player_spawns = this.options.num_player_spawns || 6;
   }
-  
-  process() {
-    if (!this.enabled) return;
-    let num_current_spawns = 0;
+
+  getPlayerSpawns() {
     let player_spawns = [];
     this.saturn.cubes.forEachIndex((i, j) => {
       player_spawns = player_spawns.concat(this.saturn.cubes.getAt(i, j).getPlayerSpawns());
     });
+    return player_spawns;
+  }
+
+  getEnabledPlayerSpawns() {
+    return this.getPlayerSpawns().filter((p) => p.isEnabled());
+  }
+
+  getDisabledPlayerSpawns() {
+    return this.getPlayerSpawns().filter((p) => p.isDisabled());
+  }
+
+  _bruteForceSpawn() {
+    let disabled_players = this.getDisabledPlayerSpawns();
+    disabled_players = this.srng.randomShuffle(disabled_players);
+    for (let dp = 0; dp < disabled_players.length; dp++) {
+      let player = disabled_players[dp];
+      if (this._isPlayerIntersectingEnabledPlayers(player)) continue;
+
+      let elements = this.saturn.locateElementsByBBox(player.getBBox().expand(1,1));
+      elements.forEach((e) => e.floor());
+      player.setEnabled();
+      return true;
+    }
+    return false;
+  }
+
+  // Check to see if it sits on floor tiles on Saturn.
+  _isPlayerOnSaturn(player) {
+    let elements = this.saturn.locateElementsByBBox(player.getBBox());
+    if (elements.some((e) => !e.isFloor()))
+      return false;
+    return true;
+  }
+
+  // Check to see if the player intersects with enabled players spawns on Saturn.
+  // Notes:
+  // - Player Spawns are padded to allow better dispersion.
+  _isPlayerIntersectingEnabledPlayers(player) {
+    let enabled_players = this.getEnabledPlayerSpawns();
+    for (let i = 0; i < enabled_players.length; i++) {
+      let eplayer = enabled_players[i];
+
+      let player_bbox = player.getBBox().expand(5,5);
+      let eplayer_bbox = eplayer.getBBox().expand(5,5);
+      if (player_bbox.checkIntersection(eplayer_bbox)) {
+	return true;
+      }
+    }
+    return false;
+  }
+
+  process() {
+    if (!this.enabled) return;
+    let player_spawns = this.getPlayerSpawns();
+
     // Random Shuffle our player_spawns
     player_spawns = this.srng.randomShuffle(player_spawns);
-    let bChk = false;
     for (let pi = 0; pi < player_spawns.length; pi++) {
       let player = player_spawns[pi];
       
       // Check to see if it sits on a floor big enough to accommodate
       // the player spawn.
-      let elements = this.saturn.locateElementsByBBox(player.getBBox());
-      if (elements.some((e) => !e.isFloor())) continue;
+      if (!this._isPlayerOnSaturn(player)) continue;
       
-      // Check if the player spawn collides with other player spawns that have already been chosen.
-      let enabled_players = player_spawns.filter((p) => p.isEnabled());
-      let bIntersectingPlayers = false;
-      for (let epi = 0; epi < enabled_players.length; epi++) {
-	let eplayer = enabled_players[epi];
-	if (player.getBBox().expand(5, 5).checkIntersection(eplayer.getBBox().expand(5, 5))) {
-	  bIntersectingPlayers = true;
-	  break;
-	}
-      }
-      if (bIntersectingPlayers) continue;
-      else {
-	player.setEnabled();
-	num_current_spawns += 1;
-      }
-      if (num_current_spawns >= this.num_player_spawns)
+      // Check if the player spawn collides with other player spawns that have already been enabled.
+      if (this._isPlayerIntersectingEnabledPlayers(player)) continue;
+
+      // We Good.
+      player.setEnabled();
+
+      if (this.getEnabledPlayerSpawns().length >= this.num_player_spawns)
 	break;
     }
-    if (num_current_spawns < this.num_player_spawns)
-      throw new Error("Could not satisfy player spawns.");
-    
-    console.log("Enabled Players: ",
-		player_spawns.filter((p) => p.isEnabled()).map((p) => p.getBBox()));
+
+    // TODO: brute force spots on Saturn to place the rest of the player spawns.
+    while (this.getEnabledPlayerSpawns().length < this.num_player_spawns) {
+      let bChk = this._bruteForceSpawn();
+      if (!bChk) throw new Error("Failed to find enough spawns; Seed: " + this.procgen.seed);
+    }
   }
 }
 
@@ -2324,7 +2367,7 @@ class ProcGen {
 // BEGIN
 //
 if (require.main === module) {
-  let args = process.argv;
+  let args = process && process.argv || [];
   let seed = args.length > 2 ? args[2] : null;
   let procgen = new ProcGen(seed, {
     RoomPlacement: {
