@@ -264,8 +264,8 @@ class BBox {
     let b_min_y = bbox.y;
     let b_max_y = bbox.y + bbox.h;
 
-    return !(a_max_x < b_min_x || a_min_x > b_max_x ||
-	     a_max_y < b_min_y || a_min_y > b_max_y);
+    return !(a_max_x <= b_min_x || a_min_x >= b_max_x ||
+	     a_max_y <= b_min_y || a_min_y >= b_max_y);
   }
 
   checkInside(ibbox) {
@@ -2371,7 +2371,7 @@ if (require.main === module) {
   let seed = args.length > 2 ? args[2] : null;
   let procgen = new ProcGen(seed, {
     RoomPlacement: {
-      num_rooms: 6,
+      num_rooms: 9,
     },
     CellularAutomata: {
       Splotch: {
