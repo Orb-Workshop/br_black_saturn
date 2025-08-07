@@ -234,7 +234,60 @@ class Point {
   constructor(x, y) {
     this.x = x;
     this.y = y;
-  } 
+  }
+
+  toArray() { return [this.x, this.y]; }
+}
+
+class LineSegment {
+  constructor(point_a, point_b) {
+    this.a = point_a;
+    this.b = point_b;
+  }
+
+  midpoint() {
+    let m_x = (this.a.x + this.b.x) / 2;
+    let m_y = (this.a.y + this.b.y) / 2;
+    return new Point(m_x, m_y);
+  }
+
+  distance() {
+    let a = this.a;
+    let b = this.b;
+    let ab_x = b.x - a.x;
+    let ab_y = b.y - a.y;
+    return Math.hypot(ab_x, ab_y);
+  }
+
+  // Returns a unit/direction vector from point 'a' to 'b'
+  direction() {
+    let a = this.a;
+    let b = this.b;
+    let ab_mag = this.distance();
+    let ab_x = b.x - a.x;
+    let ab_y = b.y - a.y;
+    let unit_x = ab_x / ab_mag;
+    let unit_y = ab_y / ab_mag;
+    return [unit_x, unit_y];
+  }
+
+  // returns a Point between a and b based on a normalized value
+  // between 0.0 and 1.0
+  // ex. norm=0. --> return this.a
+  //     norm=1. --> return this.b
+  getNormalizedPoint(norm) {
+    let a = this.a;
+    let b = this.b;
+
+    if (norm <= 0.) return a;
+    if (norm >= 1.) return b;
+
+    let point_distance = this.distance() * norm;
+    let unit_vector = this.direction();
+    let unit_x = unit_vector[0];
+    let unit_y = unit_vector[1];
+    return new Point(unit_x * point_distance, unit_y * point_distance);
+  }
 }
 
 // Bounding Box 2D
@@ -648,12 +701,16 @@ class Pathfinding {
 
   _elementCalculateTypeCost(type) {
     switch(type) {
-      case "floor":    return 10;
+      case "floor":
+      case "door":     return 10;
+      case "small_cover":
+      case "mountain_tunnel":
+                       return 15;
       case "bridge":   return 20;
+      case "window":   return 80;
       case "mountain": return 120;
       case "cover":    return 180;
       case "fill":     return 200;
-      case "window":   return 210;
       case "empty":    return 1000;
       default: throw new Error("Unknown Type: " + type);
     }
@@ -713,6 +770,204 @@ class Pathfinding {
   }
 }
 
+const DEFAULT_TRANSMUTE_LIST = {
+  mountain: "floor",
+  fill: "floor",
+  cover: "floor",
+  window: "floor",
+};
+class PathCrawler {
+  constructor(procgen, options) {
+    this.procgen = procgen;
+    this.saturn = procgen.saturn;
+    this.srng = procgen.srng;
+    this.options = options || {};
+    // TODO: Path Width is hardcoded to 2, add functionality.
+    this.path_width = this.options.path_width || 2;
+    this.transmute_list = this.options.transmute_list || DEFAULT_TRANSMUTE_LIST;
+  }
+
+  _traversePath(element_from, element_to) {
+    if (element_to === null) return;
+    let direction = this._directionTo(element_from, element_to);
+    // Paths only go up/down or left/right
+    direction = (direction.lr !== null) ? direction.lr : direction.ud;
+    switch(direction) {
+      case "left": this._traverseLeft(element_from); break;
+      case "right": this._traverseRight(element_from); break;
+      case "up": this._traverseUp(element_from); break;
+      case "down": this._traverseDown(element_from); break;
+      default: throw new Error("This should never happen");
+    }
+  }
+
+  _directionTo(element_from, element_to) {
+    // Left / Right
+    let direction_lr = null;
+    if (element_from.x <= element_to.x) direction_lr = "right";
+    else if (element_from.x >= element_to.x) direction_lr = "left";
+    
+    // Up / Down
+    let direction_ud = null;
+    if (element_from.y <= element_to.y) direction_lr = "down";
+    else if (element_from.y >= element_to.y) direction_lr = "up";
+
+    //
+    return {lr: direction_lr, ud: direction_ud};
+  }
+
+  _traverseLeft(element) {
+    element.floor();
+    let t_element = element.left();
+    let ta_element = t_element.up();
+    let tb_element = t_element.down();
+
+    t_element.floor();
+
+    // Check Null Edge Cases
+    if (ta_element === null) {
+      tb_element.floor();
+      return;
+    }
+
+    if (tb_element === null) {
+      ta_element.floor();
+      return;
+    }
+
+    if (ta_element.isFloor() || tb_element.isFloor()) return;
+
+    if (this.srng.randomChance(0.5)) {
+      ta_element.floor();
+      return;
+    }
+    else {
+      tb_element.floor();
+      return;
+    }
+  }
+
+  _traverseRight(element) {
+    element.floor();
+    let t_element = element.right();
+    let ta_element = t_element.up();
+    let tb_element = t_element.down();
+
+    t_element.floor();
+
+    // Check Null Edge Cases
+    if (ta_element === null) {
+      tb_element.floor();
+      return;
+    }
+
+    if (tb_element === null) {
+      ta_element.floor();
+      return;
+    }
+
+    if (ta_element.isFloor() || tb_element.isFloor()) return;
+
+    if (this.srng.randomChance(0.5)) {
+      ta_element.floor();
+      return;
+    }
+    else {
+      tb_element.floor();
+      return;
+    }
+  }
+
+  _traverseUp(element) {
+    element.floor();
+    let t_element = element.up();
+    let ta_element = t_element.left();
+    let tb_element = t_element.right();
+
+    t_element.floor();
+
+    // Check Null Edge Cases
+    if (ta_element === null) {
+      tb_element.floor();
+      return;
+    }
+
+    if (tb_element === null) {
+      ta_element.floor();
+      return;
+    }
+
+    if (ta_element.isFloor() || tb_element.isFloor()) return;
+
+    if (this.srng.randomChance(0.5)) {
+      ta_element.floor();
+      return;
+    }
+    else {
+      tb_element.floor();
+      return;
+    }
+  }
+
+  _traverseDown(element) {
+    element.floor();
+    let t_element = element.down();
+    let ta_element = t_element.left();
+    let tb_element = t_element.right();
+
+    t_element.floor();
+
+    // Check Null Edge Cases
+    if (ta_element === null) {
+      tb_element.floor();
+      return;
+    }
+
+    if (tb_element === null) {
+      ta_element.floor();
+      return;
+    }
+
+    if (ta_element.isFloor() || tb_element.isFloor()) return;
+
+    if (this.srng.randomChance(0.5)) {
+      ta_element.floor();
+      return;
+    }
+    else {
+      tb_element.floor();
+      return;
+    }
+  }
+
+  _pathNext(path, element) {
+    let px = element.x;
+    let py = element.y;
+    let element_parent_position = path.getAt(px, py).parent;
+    if (element_parent_position === null) return null;
+    let ep_x = element_parent_position[0];
+    let ep_y = element_parent_position[1];
+    let parent_element = this.saturn.getAt(ep_x, ep_y);
+    return parent_element;
+  }
+
+  // Crawls a `path` provided by using the method
+  // Pathfinding.getShortestPaths(x_destination, y_destination)
+  // Notes:
+  // - `path` is a Saturn2D instance containing elements with a `.parent` attr.
+  //   - This 'parent' attribute points at the element leading to the shortest path.
+  crawl(path, x, y) {
+    let current_position = [x, y];
+    while (current_position !== null) {
+      let px = current_position[0];
+      let py = current_position[1];
+      let element_from = this.saturn.getAt(px, py, 0);
+      let element_to = this._pathNext(path, element_from);
+      this._traversePath(element_from, element_to);
+      current_position = (element_to !== null) ? [element_to.x, element_to.y] : null;
+    }
+  }
+}
 
 // Saturn Itself
 // - this.elements[SaturnElement, ...,]
@@ -2127,12 +2382,17 @@ class VoronoiDiagram {
   getCompleteEdges() {
     if (!this.isComputed()) return null;
     let edges = this.diagram.edges.filter((edge) => edge.rSite && edge.lSite);
-    return edges;
+    return edges.map((e) => { return {
+      point_left: new Point(e.lSite.x, e.lSite.y),
+      point_right: new Point(e.rSite.x, e.rSite.y),
+      edge_segment: new LineSegment(new Point(e.va.x, e.va.y),
+				    new Point(e.vb.x, e.vb.y)),
+    };});
   }
 
   getEquidistantVertices() {
     let onlyUnique = (value, index, array) => array.indexOf(value) === index;
-    let edges = this.getCompleteEdges();
+    let edges = this.diagram.edges.filter((edge) => edge.rSite && edge.lSite);
     return edges
       .map((edge) => [edge.va, edge.vb])
       .reduce((acc, edge_pair) => {
@@ -2140,7 +2400,8 @@ class VoronoiDiagram {
 	acc.push(edge_pair[1]);
 	return acc;
       }, [])
-      .filter(onlyUnique);
+      .filter(onlyUnique)
+      .map((e) => new Point(e.x, e.y));
   }
 
   getEquidistantElements() {
@@ -2269,11 +2530,45 @@ class PlayerPlacement {
 	break;
     }
 
-    // TODO: brute force spots on Saturn to place the rest of the player spawns.
+    // Brute force spots on Saturn to place the rest of the player spawns.
     while (this.getEnabledPlayerSpawns().length < this.num_player_spawns) {
       let bChk = this._bruteForceSpawn();
       if (!bChk) throw new Error("Failed to find enough spawns; Seed: " + this.procgen.seed);
     }
+  }
+}
+
+class PropPlacement {
+  constructor(procgen, options) {
+    this.procgen = procgen;
+    this.saturn = procgen.saturn;
+    this.options = options || {};
+    this.num_props = this.options.num_props || 10;
+  }
+
+  process() {
+    let players = this.procgen.playerPlacement.getEnabledPlayerSpawns();
+    // Form a Voronoi between player spawns to find the best places to
+    // put props for concealment between spawns.
+    // Edge Segments form theoretical 'barriers' between player spawns.
+    let vDiagram = new VoronoiDiagram(this.procgen);
+    let points = players.map((p) => p.getBBox().center());
+    vDiagram.compute(points);
+    let edges = vDiagram.getCompleteEdges();
+    
+    // TODO: Determine the best place to place the 'trophy room',
+    
+
+    // which should be equidistant from as many players as possible.
+    // TODO: Perform pathfinding from each player to the 'trophy room',
+    // and crawl over the space to make sure the desired paths are walkable
+    // (players need at least 2 units to walk, 3 recommended)
+    //console.log(vDiagram.getCompleteEdges());
+    //console.log(vDiagram.getEquidistantVertices());
+
+    // TODO: Look at line of sight between players and intelligently place cover props
+    // TODO: use the Voronoi edge segments to determine best tier 2 weapon placement.
+    // TODO: tier 1 guns should be placed on each player spawn.
   }
 }
 
@@ -2324,6 +2619,11 @@ class ProcGen {
       this.options.PlayerPlacement,
     );
 
+    this.propPlacement = new PropPlacement(
+      this,
+      this.options.PropPlacement,
+    );
+    
     return this;
   }
 
@@ -2351,6 +2651,9 @@ class ProcGen {
 
     // Stage 7 - Determine Player Spawn Placement
     this.playerPlacement.process();
+
+    // Stage 8 -  Place Trophy Room. Place props on the map.
+    this.propPlacement.process();
 
     return this;
   }
@@ -2393,10 +2696,13 @@ if (require.main === module) {
       penetration: 3,
     },
     MountainPlacement: {
-      num_mountains: 4,
+      num_mountains: 5,
     },
     PlayerPlacement: {
       enabled: true,
+    },
+    PropPlacement: {
+      
     },
   }).process().display2d();
 
@@ -2424,5 +2730,4 @@ if (require.main === module) {
   //   if (i != 0) return;
   //   console.log(noise);
   // });
-
 } // END if (require.main === module) {
