@@ -309,7 +309,7 @@ class BBox {
     let a_min_x = this.x;
     let a_max_x = this.x + this.w;
     let a_min_y = this.y;
-    let a_max_y = this.x + this.h;
+    let a_max_y = this.y + this.h;
 
     // Box B
     let b_min_x = bbox.x;
@@ -2530,7 +2530,7 @@ class PlayerPlacement {
       let player = disabled_players[dp];
       if (this._isPlayerIntersectingEnabledPlayers(player)) continue;
 
-      let elements = this.saturn.locateElementsByBBox(player.getBBox().expand(1,1));
+      let elements = this.saturn.locateElementsByBBox(player.getBBox().expand(1));
       elements.forEach((e) => e.floor());
       player.setEnabled();
       return true;
@@ -2554,12 +2554,13 @@ class PlayerPlacement {
     for (let i = 0; i < enabled_players.length; i++) {
       let eplayer = enabled_players[i];
 
-      let player_bbox = player.getBBox().expand(5,5);
-      let eplayer_bbox = eplayer.getBBox().expand(5,5);
-      if (player_bbox.checkIntersection(eplayer_bbox)) {
+      let player_bbox = player.getBBox().expand(5);
+      let eplayer_bbox = eplayer.getBBox().expand(5);
+      if (eplayer_bbox.checkIntersection(player_bbox)) {
 	return true;
       }
     }
+    
     return false;
   }
 
@@ -2568,7 +2569,7 @@ class PlayerPlacement {
     let player_spawns = this.getPlayerSpawns();
 
     // Random Shuffle our player_spawns
-    player_spawns = this.srng.randomShuffle(player_spawns);
+    player_spawns = this.srng.randomShuffle(player_spawns, true);
     for (let pi = 0; pi < player_spawns.length; pi++) {
       let player = player_spawns[pi];
       
