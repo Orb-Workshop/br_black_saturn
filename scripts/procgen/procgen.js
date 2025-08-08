@@ -738,16 +738,16 @@ class Pathfinding {
     switch(type) {
       case "floor":
       case "trophy":
-      case "door":     return 10;
+      case "door":     return 10000;
       case "small_cover":
       case "mountain_tunnel":
-                       return 15;
-      case "bridge":   return 20;
-      case "window":   return 80;
-      case "mountain": return 120;
-      case "cover":    return 180;
-      case "empty":    return 200;
-      case "fill":     return 10000;
+                       return 8000;
+      case "bridge":   return 2000;
+      case "window":   return 2000;
+      case "mountain": return 1000;
+      case "cover":    return 500;
+      case "empty":    return 400;
+      case "fill":     return 10;
       default: throw new Error("Unknown Type: " + type);
     }
   }
@@ -1968,7 +1968,7 @@ class RayTracing {
     let p1 = this.starting_point;
     let p2 = this.current_point;
     let pt = [p1[0] - p2[0], p1[1] - p2[1]];
-    return Math.sqrt(pt[0]*pt[0]+pt[1]*pt[1]);
+    return Math.hypot(pt[0], pt[1]);
   }
 
   _propagateRay() {
@@ -1990,6 +1990,7 @@ class RayTracing {
   }
 
   // Returns null if func_negation --> true
+  // Returns null if max_distance reached.
   getRayCollision() {
     let element = null;
     while(this._getDistance() < this.max_distance) {
@@ -2717,17 +2718,46 @@ class PropPlacement {
     element.setType("trophy");
   }
 
+  _generatePlayerCover(edge) {
+    let player_left = edge.point_left;
+    let player_right = edge.point_right;
+    let edge_segment = edge.edge_segment;
+
+    while(this._checkPlayerLineOfSight(player_left, player_right)) {
+      let random_point = edge_segment.getNormalizedPoint(
+	this.srng.randomFloat(0, 1));
+      this.saturn.locateElement(random_point.x, random_point.y).fill();
+    }
+  }
+
+  _checkPlayerLineOfSight(player_left, player_right) {
+    let player_segment = new LineSegment(player_left, player_right);
+    let distance = player_segment.distance();
+    let direction = player_segment.direction();
+    let destination_bbox = this.saturn.locateElement(player_right.x, player_right.y).getBBox().expand(1);
+
+
+    let raytracer = new RayTracing(this.procgen, {
+      func_collision: (e) => ["fill", "mountain"].includes(e.getType()),
+      func_negation: (e) => destination_bbox.checkInside(e),
+      max_distance: distance,
+      starting_point: player_left.toArray(),
+      starting_direction: direction,
+    });
+
+    return (raytracer.getRayCollision() === null); // Null if line of sight.
+  }
+
   process() {
     let players = this.procgen.playerPlacement.getEnabledPlayerSpawns();
     // Form a Voronoi between player spawns to find the best places to
     // put props and trophy rooms for concealment between spawns.
     // Edge Segments form theoretical 'barriers' between player
     // spawns.
-    let vDiagram = new VoronoiDiagram(this.procgen);
+    let v_diagram = new VoronoiDiagram(this.procgen);
     let points = players.map((p) => p.getBBox().center());
-    vDiagram.compute(points);
-    let edges = vDiagram.getCompleteEdges();
-    let epoints = vDiagram.getEquidistantPoints();
+    v_diagram.compute(points);
+    let epoints = v_diagram.getEquidistantPoints();
     let avg_point = this._pointAverage(epoints);
     let avg_element = this.saturn.locateElement(avg_point.x, avg_point.y, 0);
 
@@ -2744,8 +2774,11 @@ class PropPlacement {
     // Crawl towards the trophy from all player spawns.
     this._performTrophyRoomPathCrawl();
 
-    //console.log(vDiagram.getCompleteEdges());
-    //console.log(vDiagram.getEquidistantPoints());
+    // Form cover between players using voronoi edge segments.
+    let edges = v_diagram.getCompleteEdges();
+    edges.forEach((e) => this._generatePlayerCover(e));
+    
+    
 
     // TODO: Look at line of sight between players and intelligently place cover props
     // TODO: use the Voronoi edge segments to determine best tier 2 weapon placement.
