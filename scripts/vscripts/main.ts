@@ -2945,11 +2945,14 @@ class SaturnValveWorldRender {
 	    if (k !== 0) return;
 	    let _type = element.getType();
 	    switch(_type) {
-		case "fill":
-		case "cover":
 		case "window":
+		case "cover":
+		    this._elementFill(i, j, k);
+		    break;
+		case "fill":
 		case "mountain":
 		    this._elementFill(i, j, k);
+		    this._elementFill(i, j, k+1);
 		    break;
 		case "floor":
 		    this._elementFloor(i, j, k);
