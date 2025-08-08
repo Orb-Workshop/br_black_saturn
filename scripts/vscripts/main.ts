@@ -1,3 +1,10 @@
+/// <reference types="s2ts/types/cspointscript" />
+import { Instance } from "cspointscript"
+//import ProcGen from "./procgen.js"
+// Data Dump procgen.js //
+
+
+
 //@ts-nocheck
 //
 // Procedural Generation Library
@@ -95,7 +102,7 @@ function sfc32(a, b, c, d) {
 
 
 const DEFAULT_TOTAL_DISTRIBUTION = 10_000_000;
-class SeededRandomNumberGenerator {
+export class SeededRandomNumberGenerator {
   constructor(_seed, options) {
     // Options
     options = options || {};
@@ -2785,7 +2792,7 @@ class PropPlacement {
 }
 
 // Combine Techniques...
-class ProcGen {
+export default class ProcGen {
   constructor(seed, options) {
     this.seed = seed || RandomSeed();
     this.options = options || {};
@@ -2878,68 +2885,54 @@ class ProcGen {
 }
 
 
-//
-// BEGIN
-//
-if (require.main === module) {
-  let args = process && process.argv || [];
-  let seed = args.length > 2 ? args[2] : null;
-  let procgen = new ProcGen(seed, {
-    RoomPlacement: {
-      num_rooms: 9,
-    },
-    CellularAutomata: {
-      Splotch: {
-	cycles: 25,
-      },
-      Solidify: {
-	cycles: 2,
-	threshold: 5,
-      },
-    },
-    BridgePlacement: {
-      enabled: true,
-    },
-    CoverPlacement: {
-      num_cover: 20,
-    },
-    WindowPlacement: {
-      num_windows: 30,
-      penetration: 3,
-    },
-    MountainPlacement: {
-      num_mountains: 5,
-    },
-    PlayerPlacement: {
-      enabled: true,
-    },
-    PropPlacement: {
-      
-    },
-  }).process().display2d();
-
-  // let voronoiDiagram = new VoronoiDiagram(procgen);
-  // let getCenterAt = (x, y) => procgen.saturn.getAt(x, y, 0).getBBox().center();
-  // let points = [
-  //   getCenterAt(12, 12),
-  //   getCenterAt(12, 36),
-  //   getCenterAt(36, 12),
-  //   getCenterAt(36, 36),
-  // ];
-
-  // voronoiDiagram.compute(points);
-  // console.log(voronoiDiagram.getEquidistantPoints());
 
 
-  // Simplex Test
+// END Data Dump procgen.js //
 
-  // let simplex = new SimplexNoise(procgen, {
-  //   resolution: [10, 10],
-  //   offset: [0., 0.],
-  // });
-  
-  // simplex.forEachNoiseIndex((i, j, noise) => {
-  //   if (i != 0) return;
-  //   console.log(noise);
-  // });
-} // END if (require.main === module) {
+
+
+Instance.InitialActivate(() => {
+    let srng = new SeededRandomNumberGenerator("test");
+    Instance.Msg("Procgen Test!");
+    Instance.Msg("Random Float: " + srng.randomFloat(1, 10))
+    Instance.Msg("Procgen Test!");
+
+    let procgen = new ProcGen("test", {
+	RoomPlacement: {
+	    num_rooms: 9,
+	},
+	CellularAutomata: {
+	    Splotch: {
+		cycles: 25,
+	    },
+	    Solidify: {
+		cycles: 2,
+		threshold: 5,
+	    },
+	},
+	BridgePlacement: {
+	    enabled: true,
+	},
+	CoverPlacement: {
+	    num_cover: 20,
+	},
+	WindowPlacement: {
+	    num_windows: 30,
+	    penetration: 3,
+	},
+	MountainPlacement: {
+	    num_mountains: 5,
+	},
+	PlayerPlacement: {
+	    enabled: true,
+	},
+	PropPlacement: {
+	    
+	},
+    }).process();
+
+    Instance.Msg("Processed Seed: " + procgen.seed);
+});
+
+
+
