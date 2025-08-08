@@ -2727,6 +2727,7 @@ class PropPlacement {
       let random_point = edge_segment.getNormalizedPoint(
 	this.srng.randomFloat(0, 1));
       this.saturn.locateElement(random_point.x, random_point.y).fill();
+      console.log("Random Point: ", random_point);
     }
   }
 
@@ -2734,12 +2735,9 @@ class PropPlacement {
     let player_segment = new LineSegment(player_left, player_right);
     let distance = player_segment.distance();
     let direction = player_segment.direction();
-    let destination_bbox = this.saturn.locateElement(player_right.x, player_right.y).getBBox().expand(1);
-
 
     let raytracer = new RayTracing(this.procgen, {
       func_collision: (e) => ["fill", "mountain"].includes(e.getType()),
-      func_negation: (e) => destination_bbox.checkInside(e),
       max_distance: distance,
       starting_point: player_left.toArray(),
       starting_direction: direction,
