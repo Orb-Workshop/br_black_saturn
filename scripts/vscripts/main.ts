@@ -2885,19 +2885,71 @@ export default class ProcGen {
 }
 
 
-
-
 // END Data Dump procgen.js //
+
+
+class SaturnValveWorldRender {
+    constructor(procgen, options) {
+	this.procgen = procgen;
+	this.saturn = procgen.saturn;
+    }
+
+    _cubeIndex(x, y) {
+	return "cube." + y + x;
+    }
+
+    _elementIndex(x, y, z) {
+	return "element." + z + y + x;
+    }
+
+    getElementEntityId(x, y, z) {
+	let cubeIndex_x = Math.floor(x / CubeDimensions[0]);
+	let cubeIndex_y = Math.floor(y / CubeDimensions[1]);
+	let cubeIndex = this._cubeIndex(
+            cubeIndex_x,
+            cubeIndex_y,
+	);
+
+	let elementIndex_x = x % CubeDimensions[0];
+	let elementIndex_y = y % CubeDimensions[1];
+	let elementIndex = this._elementIndex(
+            elementIndex_x,
+            elementIndex_y,
+            z,
+	);
+	
+	return cubeIndex + "_" + elementIndex;
+    }
+
+    _elementFill(x, y, z) {
+	let target = this.getElementEntityId(x, y, z) + "_fill";
+	Instance.EntFireBroadcast(target, "Enable");
+    }
+
+    _elementDisable(x, y, z) {
+	let target = this.getElementEntityId(x, y, z) + "_fill";
+	Instance.EntFireBroadcast(target, "Disable");
+    }
+
+    render() {
+	this.saturn.forEachIndex((i, j, k) => {
+	    let element = this.saturn.getAt(i, j, k);
+	    if (k !== 0) return;
+	    if (!element.isEmpty()) this._elementFill(i, j, k);
+	});
+	return this;
+    }
+}
 
 
 
 Instance.InitialActivate(() => {
-    let srng = new SeededRandomNumberGenerator("test");
-    Instance.Msg("Procgen Test!");
+    let srng = new SeededRandomNumberGenerator(RandomWord());
+    Instance.Msg("Procgen Test!4");
     Instance.Msg("Random Float: " + srng.randomFloat(1, 10))
-    Instance.Msg("Procgen Test!");
+    Instance.Msg("Procgen Test!4");
 
-    let procgen = new ProcGen("test", {
+    let procgen = new ProcGen(null, {
 	RoomPlacement: {
 	    num_rooms: 9,
 	},
@@ -2930,6 +2982,9 @@ Instance.InitialActivate(() => {
 	    
 	},
     }).process();
+
+    let valve = new SaturnValveWorldRender(procgen, {
+    }).render();
 
     Instance.Msg("Processed Seed: " + procgen.seed);
 });
