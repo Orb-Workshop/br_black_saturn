@@ -336,6 +336,7 @@ class BBox {
   // Returns a new BBox expanded by xw*2 units on the x-axis and by
   // yh*2 units on the y-axis around the center;
   expand(xw, yh) {
+    yh = (yh !== undefined) ? yh : xw;
     let x = this.x - xw;
     let y = this.y - yh;
     let w = this.w + xw * 2;
@@ -346,6 +347,7 @@ class BBox {
   // Returns a new BBox contracted by xw*2 units on the x-axis and by
   // yh*2 units on the y-axis around the center of the BBox.
   contract(xw, yh) {
+    yh = (yh !== undefined) ? yh : xw;
     let x = this.x + xw;
     let y = this.y + yh;
     let w = this.w - xw * 2;
@@ -359,6 +361,39 @@ class BBox {
     y = this.y + y;
     let w = this.w;
     let h = this.h;
+    return new BBox(x, y, w, h);
+  }
+  
+  // Extend the top, right, bottom, left of the BBox
+  extendLeft(amt) {
+    let x = this.x - amt;
+    let y = this.y;
+    let w = this.w + amt;
+    let h = this.h;
+    return new BBox(x, y, w, h);
+  }
+
+  extendRight(amt) {
+    let x = this.x;
+    let y = this.y;
+    let w = this.w + amt;
+    let h = this.h;
+    return new BBox(x, y, w, h);
+  }
+
+  extendUp(amt) {
+    let x = this.x;
+    let y = this.y - amt;
+    let w = this.w;
+    let h = this.h + amt;
+    return new BBox(x, y, w, h);
+  }
+
+  extendDown(amt) {
+    let x = this.x;
+    let y = this.y;
+    let w = this.w;
+    let h = this.h + amt;
     return new BBox(x, y, w, h);
   }
 }
@@ -702,6 +737,7 @@ class Pathfinding {
   _elementCalculateTypeCost(type) {
     switch(type) {
       case "floor":
+      case "trophy":
       case "door":     return 10;
       case "small_cover":
       case "mountain_tunnel":
@@ -710,8 +746,8 @@ class Pathfinding {
       case "window":   return 80;
       case "mountain": return 120;
       case "cover":    return 180;
-      case "fill":     return 200;
-      case "empty":    return 1000;
+      case "empty":    return 200;
+      case "fill":     return 10000;
       default: throw new Error("Unknown Type: " + type);
     }
   }
@@ -804,13 +840,13 @@ class PathCrawler {
   _directionTo(element_from, element_to) {
     // Left / Right
     let direction_lr = null;
-    if (element_from.x <= element_to.x) direction_lr = "right";
-    else if (element_from.x >= element_to.x) direction_lr = "left";
+    if (element_from.x < element_to.x) direction_lr = "right";
+    else if (element_from.x > element_to.x) direction_lr = "left";
     
     // Up / Down
     let direction_ud = null;
-    if (element_from.y <= element_to.y) direction_lr = "down";
-    else if (element_from.y >= element_to.y) direction_lr = "up";
+    if (element_from.y < element_to.y) direction_lr = "down";
+    else if (element_from.y > element_to.y) direction_lr = "up";
 
     //
     return {lr: direction_lr, ud: direction_ud};
@@ -912,6 +948,7 @@ class PathCrawler {
   _traverseDown(element) {
     element.floor();
     let t_element = element.down();
+    if (t_element === null) return;
     let ta_element = t_element.left();
     let tb_element = t_element.right();
 
@@ -948,6 +985,9 @@ class PathCrawler {
     let ep_x = element_parent_position[0];
     let ep_y = element_parent_position[1];
     let parent_element = this.saturn.getAt(ep_x, ep_y);
+    if (parent_element === undefined)
+      console.log(ep_x, ep_y);
+
     return parent_element;
   }
 
@@ -1060,6 +1100,7 @@ class Saturn {
   }
 
   getAt(x, y, z) {
+    z = (z !== undefined) ? z : 0;
     return this.elements[this.index(x,y,z)];
   }
 
@@ -1092,10 +1133,24 @@ class Saturn {
 
   // Only displays the first z-plane, [i, j, 0]
   display2d() {
+    let enabled_players = [];
+    this.cubes.forEachIndex((i, j) => {
+      this.cubes.getAt(i, j).getPlayerSpawns()
+	.filter((p) => p.isEnabled())
+	.forEach((p) => enabled_players.push(p));
+    });
+
     let s = "";
     for (let j = 0; j < this.height(); j++) {
       for (let i = 0; i < this.width(); i++) {
 	let element = this.getAt(i,j,0);
+
+	// Display Player Spawns
+	if (enabled_players.some((p) => p.getBBox().checkInside(element.getBBox()))) {
+	  s += "P";
+	  continue;
+	}
+
 	switch(element.getType()) {
 	  case "fill":    s += "X"; break;
 	  case "floor":   s += "."; break;
@@ -1104,6 +1159,7 @@ class Saturn {
 	  case "cover":   s += "c"; break;
 	  case "window":  s += "W"; break;
 	  case "mountain":s += "M"; break;
+	  case "trophy":  s += "T"; break;
 	  default:        s += "?"; break;
 	}
       }
@@ -2390,7 +2446,7 @@ class VoronoiDiagram {
     };});
   }
 
-  getEquidistantVertices() {
+  getEquidistantPoints() {
     let onlyUnique = (value, index, array) => array.indexOf(value) === index;
     let edges = this.diagram.edges.filter((edge) => edge.rSite && edge.lSite);
     return edges
@@ -2405,7 +2461,7 @@ class VoronoiDiagram {
   }
 
   getEquidistantElements() {
-    let vertices = this.getEquidistantVertices();
+    let vertices = this.getEquidistantPoints();
     return vertices.map((v) => this.saturn.locateElement(v.x, v.y));
   }
 }
@@ -2542,29 +2598,153 @@ class PropPlacement {
   constructor(procgen, options) {
     this.procgen = procgen;
     this.saturn = procgen.saturn;
+    this.srng = procgen.srng;
     this.options = options || {};
     this.num_props = this.options.num_props || 10;
+    this.pathfinding = new Pathfinding(
+      this.procgen,
+      this.options.Pathfinding,
+    );
+
+    // 
+    this.trophy_room = null;
+  }
+
+  _pointAverage(points) {
+    let average = points.reduce((acc, v) => {
+      acc.x += v.x;
+      acc.y += v.y;
+      return acc;
+    }, new Point(0,0));
+    average.x /= points.length;
+    average.y /= points.length;
+    return average;
+  }
+
+  // Returns the biggest bbox it can find that can comfortably fit in the given bbox space.
+  _findMaxFloorBBox(bbox) {
+    let elements = this.saturn.locateElementsByBBox(bbox);
+    // Step 1: find longest running 'floor' line of elements. We'll start with the horizontal.
+    
+  }
+
+  _bruteForceTrophyPlacement(epoints) {
+    let players = this.procgen.playerPlacement.getEnabledPlayerSpawns();
+    epoints = this.srng.randomShuffle(epoints.map((e) => e));
+    
+    // Check Equidistant Points.
+    for (let i = 0; i < epoints.length; i++) {
+      let ep = epoints[i];
+      let element_bbox = this.saturn.locateElement(ep.x, ep.y).getBBox().expand(2);
+      if (!players.some((p) => p.getBBox().expand(2).checkIntersection(element_bbox))) {
+	return ep;
+      }
+    }
+    
+    // We still failed to find a location for the trophy room, so we choose random spots to check against.
+    while (true) {
+      let ex = this.srng.randomInteger(3, this.saturn.width()-4);
+      let ey = this.srng.randomInteger(3, this.saturn.height()-4);
+      let element_bbox = this.saturn.locateElement(ex, ey).getBBox().expand(2);
+      if (!players.some((p) => p.getBBox().expand(2).getIntersection(element_bbox))) {
+	return new Point(ex, ey);
+      }
+    }
+    return null;
+  }
+  
+  _generateTrophyRoomDoors(element) {
+    let raytraceDoor = () => new RayTracing(this.procgen, {
+      starting_point: element.getBBox().center().toArray(),
+      max_distance: 5,
+    }).getRayCollision();
+    let door_count = 0;
+    let num_doors = 1;
+    while (door_count < num_doors) {
+      let door_element = raytraceDoor();
+      if (door_element !== null) {
+	door_element.floor();
+	door_count += 1;
+      }
+    }
+  }
+
+  _generateTrophyRoomWindows(element) {
+    let raytraceWindow = () => new RayTracing(this.procgen, {
+      starting_point: element.getBBox().center().toArray(),
+      max_distance: 5,
+    }).getRayCollision();
+    let window_count = 0;
+    let num_windows = 2;
+    while (window_count < num_windows) {
+      let window_element = raytraceWindow();
+      if (window_element !== null) {
+	window_element.window();
+	window_count += 1;
+      }
+    }
+  }
+
+  _generateTrophyRoom(point) {
+    let element = this.saturn.locateElement(point.x, point.y, 0);
+    let outer_trophy = element.getBBox().expand(2);
+    this.saturn.locateElementsByBBox(outer_trophy).forEach((e) => e.fill());
+    let inner_trophy = element.getBBox().expand(1);
+    this.saturn.locateElementsByBBox(inner_trophy).forEach((e) => e.floor());
+    element.setType("trophy");
+    // Raytrace some doors
+    this._generateTrophyRoomDoors(element);
+    this._generateTrophyRoomWindows(element);
+
+    return {
+      outer: outer_trophy,
+      inner: inner_trophy,
+      element: element,
+    };
+  }
+
+  _performTrophyRoomPathCrawl() {
+    let element = this.trophy_room.element;
+    let pathfinding = this.pathfinding;
+    let players = this.procgen.playerPlacement.getEnabledPlayerSpawns();
+    let pathcrawler = new PathCrawler(this.procgen, {});
+    players.map((p) => p.getBBox().center().toArray().map((v) => Math.floor(v)))
+      .forEach((p) => {
+	let path = pathfinding.getShortestPaths(element.x, element.y);
+	pathcrawler.crawl(path, p[0], p[1]);
+      });
+    element.setType("trophy");
   }
 
   process() {
     let players = this.procgen.playerPlacement.getEnabledPlayerSpawns();
     // Form a Voronoi between player spawns to find the best places to
-    // put props for concealment between spawns.
-    // Edge Segments form theoretical 'barriers' between player spawns.
+    // put props and trophy rooms for concealment between spawns.
+    // Edge Segments form theoretical 'barriers' between player
+    // spawns.
     let vDiagram = new VoronoiDiagram(this.procgen);
     let points = players.map((p) => p.getBBox().center());
     vDiagram.compute(points);
     let edges = vDiagram.getCompleteEdges();
-    
-    // TODO: Determine the best place to place the 'trophy room',
-    
+    let epoints = vDiagram.getEquidistantPoints();
+    let avg_point = this._pointAverage(epoints);
+    let avg_element = this.saturn.locateElement(avg_point.x, avg_point.y, 0);
 
-    // which should be equidistant from as many players as possible.
-    // TODO: Perform pathfinding from each player to the 'trophy room',
-    // and crawl over the space to make sure the desired paths are walkable
-    // (players need at least 2 units to walk, 3 recommended)
+    // Check to see if our average point between equidistant points is a suitable location for our trophy room.
+    let avg_bbox = avg_element.getBBox().expand(2);
+    if (players.some((p) => p.getBBox().expand(2).checkIntersection(avg_bbox))) {
+      // Otherwise, use a brute force strategy to place the room.
+      avg_point = this._bruteForceTrophyPlacement(epoints);
+    }
+
+    // Generate our trophy room based on our best fit location.
+    this.trophy_room = this._generateTrophyRoom(avg_point);
+
+    // Crawl towards the trophy from all player spawns.
+    this._performTrophyRoomPathCrawl();
+
     //console.log(vDiagram.getCompleteEdges());
-    //console.log(vDiagram.getEquidistantVertices());
+    //console.log(vDiagram.getEquidistantPoints());
 
     // TODO: Look at line of sight between players and intelligently place cover props
     // TODO: use the Voronoi edge segments to determine best tier 2 weapon placement.
@@ -2716,7 +2896,7 @@ if (require.main === module) {
   // ];
 
   // voronoiDiagram.compute(points);
-  // console.log(voronoiDiagram.getEquidistantVertices());
+  // console.log(voronoiDiagram.getEquidistantPoints());
 
 
   // Simplex Test
