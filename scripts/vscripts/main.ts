@@ -2892,6 +2892,7 @@ class SaturnValveWorldRender {
     constructor(procgen, options) {
 	this.procgen = procgen;
 	this.saturn = procgen.saturn;
+	this.srng = procgen.srng;
     }
 
     _cubeIndex(x, y) {
@@ -2929,6 +2930,7 @@ class SaturnValveWorldRender {
     _elementFloor(x, y, z) {
 	let target = this.getElementEntityId(x, y, z) + "_floor";
 	Instance.EntFireBroadcast(target, "Enable");
+	Instance.EntFireBroadcast(target, "Color", "255,0,0");
     }
 
     _elementDisable(x, y, z) {
@@ -2947,12 +2949,17 @@ class SaturnValveWorldRender {
 	    switch(_type) {
 		case "window":
 		case "cover":
+		case "trophy":
 		    this._elementFill(i, j, k);
 		    break;
 		case "fill":
+		    this._elementFill(i, j, k);
+		    this._elementFill(i, j, k+1);
+		    break;
 		case "mountain":
 		    this._elementFill(i, j, k);
 		    this._elementFill(i, j, k+1);
+		    this._elementFill(i, j, k+2);
 		    break;
 		case "floor":
 		    this._elementFloor(i, j, k);
