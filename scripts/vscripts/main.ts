@@ -2926,16 +2926,35 @@ class SaturnValveWorldRender {
 	Instance.EntFireBroadcast(target, "Enable");
     }
 
+    _elementFloor(x, y, z) {
+	let target = this.getElementEntityId(x, y, z) + "_floor";
+	Instance.EntFireBroadcast(target, "Enable");
+    }
+
     _elementDisable(x, y, z) {
-	let target = this.getElementEntityId(x, y, z) + "_fill";
-	Instance.EntFireBroadcast(target, "Disable");
+	let target = this.getElementEntityId(x, y, z)
+	let target_fill = target + "_fill";
+	let target_floor = target + "_floor";
+	Instance.EntFireBroadcast(target_fill, "Disable");
+	Instance.EntFireBroadcast(target_floor, "Disable");
     }
 
     render() {
 	this.saturn.forEachIndex((i, j, k) => {
 	    let element = this.saturn.getAt(i, j, k);
 	    if (k !== 0) return;
-	    if (!element.isEmpty()) this._elementFill(i, j, k);
+	    let _type = element.getType();
+	    switch(_type) {
+		case "fill":
+		case "cover":
+		case "window":
+		case "mountain":
+		    this._elementFill(i, j, k);
+		    break;
+		case "floor":
+		    this._elementFloor(i, j, k);
+		    break;
+	    }
 	});
 	return this;
     }
