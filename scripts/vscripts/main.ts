@@ -2927,10 +2927,14 @@ class SaturnValveWorldRender {
 	Instance.EntFireBroadcast(target, "Enable");
     }
 
+    _elementColor(target, r, g, b) {
+	Instance.EntFireBroadcast(target, "Color", "" + r + " " + g + " " + b);
+    }
+
     _elementFloor(x, y, z) {
 	let target = this.getElementEntityId(x, y, z) + "_floor";
 	Instance.EntFireBroadcast(target, "Enable");
-	Instance.EntFireBroadcast(target, "Color", "255,0,0");
+	this._elementColor(target, 180, 180, 158);
     }
 
     _elementDisable(x, y, z) {
@@ -2944,13 +2948,21 @@ class SaturnValveWorldRender {
     render() {
 	this.saturn.forEachIndex((i, j, k) => {
 	    let element = this.saturn.getAt(i, j, k);
+	    let genTarget = (i, j, k) => {return this.getElementEntityId(i, j, k) + "_fill";};
 	    if (k !== 0) return;
 	    let _type = element.getType();
 	    switch(_type) {
 		case "window":
+		    this._elementFill(i, j, k);
+		    this._elementColor(genTarget(i,j,k), 184,178,118);
+		    break;
 		case "cover":
+		    this._elementFill(i, j, k);
+		    this._elementColor(genTarget(i,j,k), 204,198,138);
+		    break;
 		case "trophy":
 		    this._elementFill(i, j, k);
+		    this._elementColor(genTarget(i,j,k), 196, 196, 63);
 		    break;
 		case "fill":
 		    this._elementFill(i, j, k);
@@ -2958,8 +2970,13 @@ class SaturnValveWorldRender {
 		    break;
 		case "mountain":
 		    this._elementFill(i, j, k);
+		    this._elementColor(genTarget(i, j, k), 151,151,121);
 		    this._elementFill(i, j, k+1);
-		    this._elementFill(i, j, k+2);
+		    this._elementColor(genTarget(i, j, k+1), 156,156,126);
+		    if (this.srng.randomChance(0.3)) {
+			this._elementFill(i, j, k+2);
+			this._elementColor(genTarget(i, j, k+2), 161,161,131);
+		    }
 		    break;
 		case "floor":
 		    this._elementFloor(i, j, k);
@@ -2974,9 +2991,9 @@ class SaturnValveWorldRender {
 
 Instance.InitialActivate(() => {
     let srng = new SeededRandomNumberGenerator(RandomWord());
-    Instance.Msg("Procgen Test!4");
+    Instance.Msg("Procgen Test!6");
     Instance.Msg("Random Float: " + srng.randomFloat(1, 10))
-    Instance.Msg("Procgen Test!4");
+    Instance.Msg("Procgen Test!6");
 
     let procgen = new ProcGen(null, {
 	RoomPlacement: {
