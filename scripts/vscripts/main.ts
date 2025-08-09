@@ -2925,6 +2925,11 @@ class SaturnValveWorldRender {
     _elementFill(x, y, z) {
 	let target = this.getElementEntityId(x, y, z) + "_fill";
 	Instance.EntFireBroadcast(target, "Enable");
+	if (z == 0) {
+	    target = this.getElementEntityId(x, y, z) + "_floor";
+	    Instance.EntFireBroadcast(target, "Enable");
+	    this._elementColor(target, 0, 0, 0);
+	}
     }
 
     _elementColor(target, r, g, b) {
@@ -2954,7 +2959,7 @@ class SaturnValveWorldRender {
 	    switch(_type) {
 		case "window":
 		    this._elementFill(i, j, k);
-		    this._elementColor(genTarget(i,j,k), 184,178,118);
+		    this._elementColor(genTarget(i,j,k), 141,141,111);
 		    break;
 		case "cover":
 		    this._elementFill(i, j, k);
@@ -2966,16 +2971,22 @@ class SaturnValveWorldRender {
 		    break;
 		case "fill":
 		    this._elementFill(i, j, k);
+		    this._elementColor(genTarget(i, j, k), 151,151,121);
 		    this._elementFill(i, j, k+1);
+		    this._elementColor(genTarget(i,j,k+1), 161, 161, 131);
+		    if (this.srng.randomChance(0.1)) {
+			this._elementFill(i, j, k+2);
+			this._elementColor(genTarget(i,j,k+2), 171, 171, 141);
+		    }
 		    break;
 		case "mountain":
 		    this._elementFill(i, j, k);
-		    this._elementColor(genTarget(i, j, k), 151,151,121);
+		    this._elementColor(genTarget(i,j,k), 33, 33, 32);
 		    this._elementFill(i, j, k+1);
-		    this._elementColor(genTarget(i, j, k+1), 156,156,126);
+		    this._elementColor(genTarget(i, j, k+1), 44,44,33);
 		    if (this.srng.randomChance(0.3)) {
 			this._elementFill(i, j, k+2);
-			this._elementColor(genTarget(i, j, k+2), 161,161,131);
+			this._elementColor(genTarget(i, j, k+2), 55,55,34);
 		    }
 		    break;
 		case "floor":
