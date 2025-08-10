@@ -3,6 +3,7 @@
 // Procedural Generation Library
 //
 
+
 /*
   Utility Libraries
  */
@@ -410,13 +411,13 @@ class BBox {
 // |   \
 // +    -
 
-const SaturnCubeDimensions = [6, 6];       // [Width, Height], Number of Cubes
-const CubeDimensions = [8, 8, 8];      // [Width, Height, Depth], Number of Elements per Cube
-const SaturnWidth = SaturnCubeDimensions[0] * CubeDimensions[0];
-const SaturnHeight = SaturnCubeDimensions[1] * CubeDimensions[1];
-const SaturnDepth = CubeDimensions[2];
-const SaturnDimensions = [SaturnWidth, SaturnHeight, SaturnDepth];
-const ElementDimensions = [48, 48, 48];
+export const SaturnCubeDimensions = [6, 6];       // [Width, Height], Number of Cubes
+export const CubeDimensions = [8, 8, 8];      // [Width, Height, Depth], Number of Elements per Cube
+export const SaturnWidth = SaturnCubeDimensions[0] * CubeDimensions[0];
+export const SaturnHeight = SaturnCubeDimensions[1] * CubeDimensions[1];
+export const SaturnDepth = CubeDimensions[2];
+export const SaturnDimensions = [SaturnWidth, SaturnHeight, SaturnDepth];
+export const ElementDimensions = [48, 48, 48];
 
 // Individual Elements that make up Saturn
 class SaturnElement {

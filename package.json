@@ -6,6 +6,6 @@
         "start": "s2ts start"
     },
     "dependencies": {
-        "s2ts": "0.5.2"
+        "s2ts": "file:third_party/s2ts/packages/s2ts"
     }
 }
