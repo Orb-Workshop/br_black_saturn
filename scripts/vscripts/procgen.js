@@ -231,7 +231,7 @@ export class SeededRandomNumberGenerator {
   }
 }
 
-class Point {
+export class Point {
   constructor(x, y) {
     this.x = x;
     this.y = y;
@@ -240,7 +240,7 @@ class Point {
   toArray() { return [this.x, this.y]; }
 }
 
-class LineSegment {
+export class LineSegment {
   constructor(point_a, point_b) {
     this.a = point_a;
     this.b = point_b;
@@ -287,12 +287,13 @@ class LineSegment {
     let unit_vector = this.direction();
     let unit_x = unit_vector[0];
     let unit_y = unit_vector[1];
-    return new Point(unit_x * point_distance, unit_y * point_distance);
+    return new Point(a.x + unit_x * point_distance,
+		     a.y + unit_y * point_distance);
   }
 }
 
 // Bounding Box 2D
-class BBox {
+export class BBox {
   constructor(x, y, w, h) {
     this.x = x;
     this.y = y;
@@ -412,7 +413,7 @@ class BBox {
 // +    -
 
 export const SaturnCubeDimensions = [6, 6];       // [Width, Height], Number of Cubes
-export const CubeDimensions = [8, 8, 8];      // [Width, Height, Depth], Number of Elements per Cube
+export const CubeDimensions = [8, 8, 4];      // [Width, Height, Depth], Number of Elements per Cube
 export const SaturnWidth = SaturnCubeDimensions[0] * CubeDimensions[0];
 export const SaturnHeight = SaturnCubeDimensions[1] * CubeDimensions[1];
 export const SaturnDepth = CubeDimensions[2];
@@ -420,7 +421,7 @@ export const SaturnDimensions = [SaturnWidth, SaturnHeight, SaturnDepth];
 export const ElementDimensions = [48, 48, 48];
 
 // Individual Elements that make up Saturn
-class SaturnElement {
+export class SaturnElement {
   constructor(saturn, x, y, z) {
     this.saturn = saturn;
     this.x = x;
@@ -549,7 +550,7 @@ class SaturnElement {
 }
 
 const PLAYER_ELEMENT_BOUNDS = [2, 2];
-class PlayerSpawn {
+export class PlayerSpawn {
   constructor(cube_element, x, y) {
     this.cube_element = cube_element;
     this.saturn = cube_element.saturn;
@@ -593,7 +594,7 @@ class PlayerSpawn {
 }
 
 // Individual Cube Elements that make up Saturn's Cube.
-class SaturnCubeElement {
+export class SaturnCubeElement {
   constructor(cube, x, y) {
     this.cube = cube;
     this.saturn = cube.saturn;
@@ -631,7 +632,7 @@ class SaturnCubeElement {
 }
 
 // Handles the 'Cube' elements that comprise the map.
-class SaturnCube {
+export class SaturnCube {
   constructor(saturn) {
     this.saturn = saturn;
     this.elements = [];
@@ -667,7 +668,7 @@ class SaturnCube {
 
 // A Deep Copy of Saturn's elements as a (x, y) slice (i, j, 0); k=0
 // Implemented as a derivative of Saturn.
-class Saturn2D {
+export class Saturn2D {
   constructor(saturn, options) {
     this.saturn = saturn;
     this.options = options || {};
@@ -701,7 +702,7 @@ class Saturn2D {
 }
 
 // Saturn Pathfinding
-class Pathfinding {
+export class Pathfinding {
   constructor(procgen, options) {
     this.procgen = procgen;
     this.saturn = procgen.saturn;
@@ -813,7 +814,7 @@ const DEFAULT_TRANSMUTE_LIST = {
   cover: "floor",
   window: "floor",
 };
-class PathCrawler {
+export class PathCrawler {
   constructor(procgen, options) {
     this.procgen = procgen;
     this.saturn = procgen.saturn;
@@ -1013,7 +1014,7 @@ class PathCrawler {
 // Saturn Itself
 // - this.elements[SaturnElement, ...,]
 // - SaturnCube -> this.cubes[SaturnCubeElement, ...,]
-class Saturn {
+export class Saturn {
   constructor() {
     // Populate Elements
     this.elements = [];
@@ -1180,7 +1181,7 @@ class Saturn {
 //
 // Room Placement
 //
-class Room {
+export class Room {
   constructor(x, y, w, h) {
     this.x = x;
     this.y = y;
@@ -1208,7 +1209,7 @@ class Room {
 const RP_DEFAULT_HALLWAY_WIDTH = 3;
 const RP_DEFAULT_CEILING_HEIGHT = 4;
 const RP_DEFAULT_NUM_ROOMS = 6;
-class RoomPlacement {
+export class RoomPlacement {
   constructor(procgen, options) {
     this.srng = procgen.srng;
     this.saturn = procgen.saturn;
@@ -1340,7 +1341,7 @@ class RoomPlacement {
 // Cellular Automata
 //
 
-class SplotchCell {
+export class SplotchCell {
   constructor(procgen, x, y) {
     this.procgen = procgen;
     this.saturn = this.procgen.saturn;
@@ -1394,7 +1395,7 @@ class SplotchCell {
 }
 
 const DEFAULT_CA_SPLOTCH_CYCLE = 10; //cycles
-class SplotchSystem {
+export class SplotchSystem {
   constructor(procgen, options) {
     this.options = options || {};
     this.enabled = (this.options.enabled !== undefined) ? this.options.enabled : true;
@@ -1466,7 +1467,7 @@ class SplotchSystem {
 
 const CA_SOLID_CYCLES = 2;
 const CA_SOLID_THRESHOLD = 5;
-class SolidifySystem {
+export class SolidifySystem {
   constructor(procgen, options) {
     this.procgen = procgen;
     this.saturn = procgen.saturn;
@@ -1516,7 +1517,7 @@ class SolidifySystem {
   }
 }
 
-class CellularAutomata {
+export class CellularAutomata {
   constructor(procgen, options) {
     this.procgen = procgen;
     this.saturn = procgen.saturn;
@@ -1539,7 +1540,7 @@ class CellularAutomata {
 const BP_DEFAULT_BRIDGE_WIDTH = 4;
 const BP_DEFAULT_THRESHOLD = 20;
 const BP_DEFAULT_BRIDGE_LENGTH = 10;
-class BridgePlacement {
+export class BridgePlacement {
   constructor(procgen, options) {
     this.procgen = procgen;
     this.saturn = procgen.saturn;
@@ -1730,7 +1731,7 @@ class BridgePlacement {
 }
 
 // Drunkard's Walk
-class WormCrawler {
+export class WormCrawler {
   constructor(procgen, options) {
     this.procgen = procgen;
     this.saturn = procgen.saturn;
@@ -1847,7 +1848,7 @@ class WormCrawler {
   }
 }
 
-class DiffusionLimitedAggregation {
+export class DiffusionLimitedAggregation {
   constructor(procgen, options) {
     this.procgen = procgen;
     this.saturn = procgen.saturn;
@@ -1927,7 +1928,7 @@ class DiffusionLimitedAggregation {
   }
 }
 
-class RayTracing {
+export class RayTracing {
   constructor(procgen, options) {
     this.procgen = procgen;
     this.saturn = procgen.saturn;
@@ -2012,7 +2013,7 @@ class RayTracing {
   }
 }
 
-class CoverPlacement {
+export class CoverPlacement {
   constructor(procgen, options) {
     this.procgen = procgen;
     this.saturn = procgen.saturn;
@@ -2031,7 +2032,7 @@ class CoverPlacement {
   }
 }
 
-class WindowPlacement {
+export class WindowPlacement {
   constructor(procgen, options) {
     this.procgen = procgen;
     this.saturn = procgen.saturn;
@@ -2102,7 +2103,7 @@ class WindowPlacement {
 // https://github.com/SRombauts/SimplexNoise/blob/master/references/SimplexNoise.java
 //
 
-class Grad {
+export class Grad {
   constructor(x, y, z) {
     this.x = x;
     this.y = y;
@@ -2110,7 +2111,7 @@ class Grad {
   }
 }
 
-class SimplexNoise {
+export class SimplexNoise {
   static grad3 = [
     new Grad(1,1,0),new Grad(-1,1,0),new Grad(1,-1,0),new Grad(-1,-1,0),
     new Grad(1,0,1),new Grad(-1,0,1),new Grad(1,0,-1),new Grad(-1,0,-1),
@@ -2391,7 +2392,7 @@ this.reset();return g;};
   v.compute([new Point(24, 24),
              new Point(12, 12)]);
  */
-class VoronoiDiagram {
+export class VoronoiDiagram {
   // Bounding Box Representing Valve Units
   static bbox_valve = {
     xl: 0,
@@ -2468,7 +2469,7 @@ class VoronoiDiagram {
   }
 }
 
-class MountainPlacement {
+export class MountainPlacement {
   constructor(procgen, options) {
     this.procgen = procgen;
     this.saturn = procgen.saturn;
@@ -2499,7 +2500,7 @@ class MountainPlacement {
   }
 }
 
-class PlayerPlacement {
+export class PlayerPlacement {
   constructor(procgen, options) {
     this.procgen = procgen;
     this.saturn = procgen.saturn;
@@ -2597,7 +2598,7 @@ class PlayerPlacement {
   }
 }
 
-class PropPlacement {
+export class PropPlacement {
   constructor(procgen, options) {
     this.procgen = procgen;
     this.saturn = procgen.saturn;
@@ -2736,15 +2737,17 @@ class PropPlacement {
     let player_segment = new LineSegment(player_left, player_right);
     let distance = player_segment.distance();
     let direction = player_segment.direction();
-
-    let raytracer = new RayTracing(this.procgen, {
-      func_collision: (e) => ["fill", "mountain"].includes(e.getType()),
-      max_distance: distance,
-      starting_point: player_left.toArray(),
-      starting_direction: direction,
-    });
-
-    return (raytracer.getRayCollision() === null); // Null if line of sight.
+    let elements_los = [];
+    for (let i = 0.0; i <= 1.0; i+=0.1) {
+      let norm_point = player_segment.getNormalizedPoint(i);
+      let element = this.saturn.locateElement(norm_point.x, norm_point.y);
+      if (elements_los.includes(element)) continue;
+      else elements_los.push(element);
+    }
+    if (elements_los.some((e) => ["mountain", "fill", "prop"].includes(e.getType()))) {
+      return false;
+    }
+    return true;
   }
 
   process() {
@@ -2775,7 +2778,7 @@ class PropPlacement {
 
     // Form cover between players using voronoi edge segments.
     let edges = v_diagram.getCompleteEdges();
-    edges.forEach((e) => this._generatePlayerCover(e));
+    //edges.forEach((e) => this._generatePlayerCover(e));
     
     
 

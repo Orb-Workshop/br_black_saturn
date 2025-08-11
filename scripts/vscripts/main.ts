@@ -89,13 +89,32 @@ class SaturnValveWorldRender {
 		    this._elementColor(genTarget(i,j,k), 196, 196, 63);
 		    break;
 		case "fill":
-		    this._elementFill(i, j, k);
-		    this._elementColor(genTarget(i, j, k), 151,151,121);
-		    this._elementFill(i, j, k+1);
-		    this._elementColor(genTarget(i,j,k+1), 161, 161, 131);
-		    if (this.srng.randomChance(0.1)) {
-			this._elementFill(i, j, k+2);
-			this._elementColor(genTarget(i,j,k+2), 171, 171, 141);
+		    let fill_dist = {two: 50, three: 50, four: 10}
+		    switch(this.srng.randomDistribution(fill_dist)) {
+			case "two":
+			    this._elementFill(i, j, k);
+			    this._elementColor(genTarget(i, j, k), 151,151,121);
+			    this._elementFill(i, j, k+1);
+			    this._elementColor(genTarget(i,j,k+1), 161, 161, 131);
+			    break;
+			case "three":
+			    this._elementFill(i, j, k);
+			    this._elementColor(genTarget(i, j, k), 151,151,121);
+			    this._elementFill(i, j, k+1);
+			    this._elementColor(genTarget(i,j,k+1), 161, 161, 131);
+			    this._elementFill(i, j, k+2);
+			    this._elementColor(genTarget(i,j,k+2), 171, 171, 141);
+			    break;
+			case "four":
+			    this._elementFill(i, j, k);
+			    this._elementColor(genTarget(i, j, k), 151,151,121);
+			    this._elementFill(i, j, k+1);
+			    this._elementColor(genTarget(i,j,k+1), 161, 161, 131);
+			    this._elementFill(i, j, k+2);
+			    this._elementColor(genTarget(i,j,k+2), 171, 171, 141);
+			    this._elementFill(i, j, k+3);
+			    this._elementColor(genTarget(i,j,k+3), 181, 181, 151);
+			    break;
 		    }
 		    break;
 		case "mountain":
@@ -103,9 +122,14 @@ class SaturnValveWorldRender {
 		    this._elementColor(genTarget(i,j,k), 33, 33, 32);
 		    this._elementFill(i, j, k+1);
 		    this._elementColor(genTarget(i, j, k+1), 44,44,33);
-		    if (this.srng.randomChance(0.3)) {
+		    if (this.srng.randomChance(0.7)) {
 			this._elementFill(i, j, k+2);
 			this._elementColor(genTarget(i, j, k+2), 55,55,34);
+		    } else {
+			this._elementFill(i, j, k+2);
+			this._elementColor(genTarget(i, j, k+2), 55,55,35);
+			this._elementFill(i, j, k+3);
+			this._elementColor(genTarget(i, j, k+3), 66,66,36);
 		    }
 		    break;
 		case "floor":
@@ -120,7 +144,7 @@ class SaturnValveWorldRender {
 Instance.InitialActivate(() => {
     let procgen = new ProcGen(null, {
 	RoomPlacement: {
-	    num_rooms: 9,
+	    num_rooms: 12,
 	},
 	CellularAutomata: {
 	    Splotch: {
