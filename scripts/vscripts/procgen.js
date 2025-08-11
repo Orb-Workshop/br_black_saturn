@@ -413,7 +413,7 @@ export class BBox {
 // +    -
 
 export const SaturnCubeDimensions = [6, 6];       // [Width, Height], Number of Cubes
-export const CubeDimensions = [8, 8, 4];      // [Width, Height, Depth], Number of Elements per Cube
+export const CubeDimensions = [8, 8, 8];      // [Width, Height, Depth], Number of Elements per Cube
 export const SaturnWidth = SaturnCubeDimensions[0] * CubeDimensions[0];
 export const SaturnHeight = SaturnCubeDimensions[1] * CubeDimensions[1];
 export const SaturnDepth = CubeDimensions[2];
@@ -576,8 +576,8 @@ export class PlayerSpawn {
   }
 
   getValvePosition() {
-    return [this.x + this.cube_element.x * CubeDimensions[0] * ElementDimensions[0],
-	    this.y + this.cube_element.y * CubeDimensions[1] * ElementDimensions[1]];
+    return [(this.x + this.cube_element.x * CubeDimensions[0]) * ElementDimensions[0],
+	    (this.y + this.cube_element.y * CubeDimensions[1]) * ElementDimensions[1]];
   }
 
   getBBox() {
@@ -589,8 +589,8 @@ export class PlayerSpawn {
   }
 
   getValveBBox() {
-    let x = this.x + this.cube_element.x * CubeDimensions[0] * ElementDimensions[0];
-    let y = this.y + this.cube_element.y * CubeDimensions[1] * ElementDimensions[1];
+    let x = (this.x + this.cube_element.x * CubeDimensions[0]) * ElementDimensions[0];
+    let y = (this.y + this.cube_element.y * CubeDimensions[1]) * ElementDimensions[1];
     let w = this.width() * ElementDimensions[0];
     let h = this.height() * ElementDimensions[1];
     return new BBox(x, y, w, h);
@@ -2547,7 +2547,7 @@ export class PlayerPlacement {
 
   // Check to see if it sits on floor tiles on Saturn.
   _isPlayerOnSaturn(player) {
-    let elements = this.saturn.locateElementsByBBox(player.getBBox());
+    let elements = this.saturn.locateElementsByBBox(player.getBBox().expand(1));
     if (elements.some((e) => !e.isFloor()))
       return false;
     return true;

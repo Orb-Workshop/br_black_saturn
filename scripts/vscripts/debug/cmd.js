@@ -44,6 +44,10 @@ let procgen = new ProcGen(seed, {
   },
 }).process().display2d();
 
+procgen.saturn.cubes.getAt(0,0).getPlayerSpawns().forEach((p) => {
+  console.log("Player Spawns: ", p.getValveBBox().center());
+});
+
 // let voronoiDiagram = new VoronoiDiagram(procgen);
 // let getCenterAt = (x, y) => procgen.saturn.getAt(x, y, 0).getBBox().center();
 // let points = [

@@ -13,7 +13,6 @@ class SaturnValveWorldRender {
 	this.procgen = procgen;
 	this.saturn = procgen.saturn;
 	this.srng = procgen.srng;
-	this.player_start = [];
     }
 
     _cubeIndex(x, y) {
@@ -75,44 +74,41 @@ class SaturnValveWorldRender {
 	}
     }
 
-    _attachPlayerSpawns() {
-	let player_start_listing = [
-	    "player_spawn_t_1",
-	    "player_spawn_t_2",
-	    "player_spawn_t_3",
-	    "player_spawn_ct_1",
-	    "player_spawn_ct_2",
-	    "player_spawn_ct_3",
-	].map((p) => p + "_playerstart");
-	this.srng.randomShuffle(player_start_listing);
+    _getPlayerSpawns() {
 	let player_spawns = [];
 	this.saturn.cubes.forEachIndex((i, j) => {
 	    player_spawns = player_spawns.concat(this.saturn.cubes.getAt(i, j).getPlayerSpawns());
 	});
-	let enabled_player_spawns = player_spawns.filter((p) => p.isEnabled());
-	let playerspawn_ids = enabled_player_spawns.map((p) => "cube." + p.y + p.x + "_" + p.getID());
-	for (let i = 0; i < playerspawn_ids.length; i++) {
-	    this.player_start.push({
-		from_entity_id: player_start_listing[i],
-		to_entity_id: playerspawn_ids[i],
-	    });
-	}
+	return player_spawns;
     }
 
-    spawnPlayers() {
-	this.player_start.forEach((ps) => {
-	    let from_playerstart = ps.from_entity_id;
-	    let to_point_teleport = ps.to_entity_id;
-	    Instance.EntFireBroadcast(to_point_teleport, "TeleportEntity", from_playerstart);
+    _attachPlayerSpawns() {
+	let enabled_player_spawns = this._getPlayerSpawns().filter((p) => p.isEnabled());
+	enabled_player_spawns.forEach((p) => {
+	    let target = this._getPlayerTargetname(p);
+	    Instance.EntFireBroadcast(target, "SetEnabled");
+	    //Instance.Msg("Enabled Target: " + target);
 	});
     }
 
+    _getPlayerTargetname(p) {
+	let target = "cube." + p.cube_element.y + p.cube_element.x + "_" + p.getID()
+	return target;
+    }
+
     clear() {
+	// Clear the elements
 	this.saturn.forEachIndex((i, j, k) => {
 	    let element = this.saturn.getAt(i,j,k);
 	    if (!element.isEmpty()) {
 		this._elementDisable(i, j, k);
 	    }
+	});
+	// Disable Enabled Players
+	let players = this._getPlayerSpawns();
+	players.filter((p) => p.isEnabled()).forEach((p) => {
+	    let target = this._getPlayerTargetname(p);
+	    Instance.EntFireBroadcast(target, "SetDisabled");
 	});
     }
 
@@ -121,6 +117,7 @@ class SaturnValveWorldRender {
 	this.saturn.forEachIndex((i, j, k) => {
 	    let element = this.saturn.getAt(i, j, k);
 	    let genTarget = (i, j, k) => {return this.getElementEntityId(i, j, k) + "_fill";};
+	    let getAt = (i, j, k) => this.saturn.getAt(i, j, k);
 	    if (k !== 0) return;
 	    let _type = element.getType();
 	    switch(_type) {
@@ -144,6 +141,7 @@ class SaturnValveWorldRender {
 			    this._elementColor(genTarget(i, j, k), 151,151,121);
 			    this._elementFill(i, j, k+1);
 			    this._elementColor(genTarget(i,j,k+1), 161, 161, 131);
+			    getAt(i, j, k+1).fill();
 			    break;
 			case "three":
 			    this._elementFill(i, j, k);
@@ -152,6 +150,8 @@ class SaturnValveWorldRender {
 			    this._elementColor(genTarget(i,j,k+1), 161, 161, 131);
 			    this._elementFill(i, j, k+2);
 			    this._elementColor(genTarget(i,j,k+2), 171, 171, 141);
+			    getAt(i, j, k+1).fill();
+			    getAt(i, j, k+2).fill();
 			    break;
 			case "four":
 			    this._elementFill(i, j, k);
@@ -162,6 +162,9 @@ class SaturnValveWorldRender {
 			    this._elementColor(genTarget(i,j,k+2), 171, 171, 141);
 			    this._elementFill(i, j, k+3);
 			    this._elementColor(genTarget(i,j,k+3), 181, 181, 151);
+			    getAt(i, j, k+1).fill();
+			    getAt(i, j, k+2).fill();
+			    getAt(i, j, k+3).fill();
 			    break;
 		    }
 		    break;
@@ -170,14 +173,18 @@ class SaturnValveWorldRender {
 		    this._elementColor(genTarget(i,j,k), 33, 33, 32);
 		    this._elementFill(i, j, k+1);
 		    this._elementColor(genTarget(i, j, k+1), 44,44,33);
+		    getAt(i, j, k+1).mountain();
 		    if (this.srng.randomChance(0.7)) {
 			this._elementFill(i, j, k+2);
 			this._elementColor(genTarget(i, j, k+2), 55,55,34);
+			getAt(i, j, k+2).mountain();
 		    } else {
 			this._elementFill(i, j, k+2);
 			this._elementColor(genTarget(i, j, k+2), 55,55,35);
 			this._elementFill(i, j, k+3);
 			this._elementColor(genTarget(i, j, k+3), 66,66,36);
+			getAt(i, j, k+2).mountain();
+			getAt(i, j, k+3).mountain();
 		    }
 		    break;
 		case "floor":
@@ -189,11 +196,10 @@ class SaturnValveWorldRender {
     }
 }
 
-
 let world_render = null;
-function GenerateWorldRender(seed) {
-    seed = seed || RandomSeed();
-    let procgen = new ProcGen(seed, {
+function GenerateWorldRender() {
+    if (world_render !== null) world_render.clear();
+    let procgen = new ProcGen(null, {
 	RoomPlacement: {
 	    num_rooms: 12,
 	},
@@ -227,15 +233,9 @@ function GenerateWorldRender(seed) {
 	},
     }).process();
 
-    let world_render = new SaturnValveWorldRender(procgen, {}).render();
+    world_render = new SaturnValveWorldRender(procgen, {}).render();
     Instance.Msg("ProcGen Processed Seed: " + procgen.seed);
     return world_render;
-}
-
-function StartWorldRender() {
-    if (world_render === null)
-	world_render = GenerateWorldRender();
-    world_render.spawnPlayers();
 }
 
 function ClearWorldRender() {
@@ -248,10 +248,11 @@ function ClearWorldRender() {
     }
 }
 
+Instance.PublicMethod("GenerateWorldRender", () => GenerateWorldRender());
+Instance.PublicMethod("ClearWorldRender", () => ClearWorldRender());
 
+let saturn_init = false;
 Instance.InitialActivate(() => {
-    StartWorldRender();
+    saturn_init = true
+    world_render = GenerateWorldRender();
 });
-
-
-
