@@ -1,5 +1,22 @@
-* Installation
-  `npm install`
+* Black Saturn
+ Black Saturn is a Procedurally Generated map which serves as a
+ Free-for-all Standoff Battle Royale. 
 
-* Usage
-  `npm run start`
+** Development
+   Setup the Development Environment
+ #+BEGIN_SRC sh
+ git clone git@github.com:Orb-Workshop/br_black_saturn.git
+ cd br_black_saturn
+ git submodule update --remote --recursive
+ cd ./third_party/s2ts/packages/s2ts
+ npm run build
+ cd ../../../../
+ npm install
+ #+END_SRC
+
+   Run the s2ts compiler
+
+ #+BEGIN_SRC sh
+ cd br_black_saturn
+ npm run start
+ #+END_SRC
