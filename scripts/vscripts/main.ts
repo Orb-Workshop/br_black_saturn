@@ -4,6 +4,7 @@ import { Instance } from "cspointscript";
 import ProcGen, {
     SeededRandomNumberGenerator,
     CubeDimensions,
+    RandomSeed,
 }
 from "procgen.js";
 
@@ -12,6 +13,7 @@ class SaturnValveWorldRender {
 	this.procgen = procgen;
 	this.saturn = procgen.saturn;
 	this.srng = procgen.srng;
+	this.player_start = [];
     }
 
     _cubeIndex(x, y) {
@@ -47,7 +49,7 @@ class SaturnValveWorldRender {
 	if (z == 0) {
 	    target = this.getElementEntityId(x, y, z) + "_floor";
 	    Instance.EntFireBroadcast(target, "Enable");
-	    this._elementColor(target, 0, 0, 0);
+	    this._elementColor(target, 1, 1, 0);
 	}
     }
 
@@ -64,12 +66,58 @@ class SaturnValveWorldRender {
     _elementDisable(x, y, z) {
 	let target = this.getElementEntityId(x, y, z)
 	let target_fill = target + "_fill";
-	let target_floor = target + "_floor";
 	Instance.EntFireBroadcast(target_fill, "Disable");
-	Instance.EntFireBroadcast(target_floor, "Disable");
+	
+	// Floor only exists on the bottom of saturn.
+	if (z == 0) {
+	    let target_floor = target + "_floor";
+	    Instance.EntFireBroadcast(target_floor, "Disable");
+	}
+    }
+
+    _attachPlayerSpawns() {
+	let player_start_listing = [
+	    "player_spawn_t_1",
+	    "player_spawn_t_2",
+	    "player_spawn_t_3",
+	    "player_spawn_ct_1",
+	    "player_spawn_ct_2",
+	    "player_spawn_ct_3",
+	].map((p) => p + "_playerstart");
+	this.srng.randomShuffle(player_start_listing);
+	let player_spawns = [];
+	this.saturn.cubes.forEachIndex((i, j) => {
+	    player_spawns = player_spawns.concat(this.saturn.cubes.getAt(i, j).getPlayerSpawns());
+	});
+	let enabled_player_spawns = player_spawns.filter((p) => p.isEnabled());
+	let playerspawn_ids = enabled_player_spawns.map((p) => "cube." + p.y + p.x + "_" + p.getID());
+	for (let i = 0; i < playerspawn_ids.length; i++) {
+	    this.player_start.push({
+		from_entity_id: player_start_listing[i],
+		to_entity_id: playerspawn_ids[i],
+	    });
+	}
+    }
+
+    spawnPlayers() {
+	this.player_start.forEach((ps) => {
+	    let from_playerstart = ps.from_entity_id;
+	    let to_point_teleport = ps.to_entity_id;
+	    Instance.EntFireBroadcast(to_point_teleport, "TeleportEntity", from_playerstart);
+	});
+    }
+
+    clear() {
+	this.saturn.forEachIndex((i, j, k) => {
+	    let element = this.saturn.getAt(i,j,k);
+	    if (!element.isEmpty()) {
+		this._elementDisable(i, j, k);
+	    }
+	});
     }
 
     render() {
+	this._attachPlayerSpawns();
 	this.saturn.forEachIndex((i, j, k) => {
 	    let element = this.saturn.getAt(i, j, k);
 	    let genTarget = (i, j, k) => {return this.getElementEntityId(i, j, k) + "_fill";};
@@ -141,8 +189,11 @@ class SaturnValveWorldRender {
     }
 }
 
-Instance.InitialActivate(() => {
-    let procgen = new ProcGen(null, {
+
+let world_render = null;
+function GenerateWorldRender(seed) {
+    seed = seed || RandomSeed();
+    let procgen = new ProcGen(seed, {
 	RoomPlacement: {
 	    num_rooms: 12,
 	},
@@ -176,9 +227,30 @@ Instance.InitialActivate(() => {
 	},
     }).process();
 
-    let valve = new SaturnValveWorldRender(procgen, {}).render();
+    let world_render = new SaturnValveWorldRender(procgen, {}).render();
+    Instance.Msg("ProcGen Processed Seed: " + procgen.seed);
+    return world_render;
+}
 
-    Instance.Msg("Processed Seed: " + procgen.seed);
+function StartWorldRender() {
+    if (world_render === null)
+	world_render = GenerateWorldRender();
+    world_render.spawnPlayers();
+}
+
+function ClearWorldRender() {
+    if (world_render !== null) {
+	world_render.clear();
+	world_render = null;
+    }
+    else {
+	Instance.Msg("ERROR: World Render is Null. Failed to Clear.");
+    }
+}
+
+
+Instance.InitialActivate(() => {
+    StartWorldRender();
 });
 
 

@@ -43,7 +43,7 @@ function RandomWord() {
   return word_array[random_index];
 }
 
-function RandomSeed() {
+export function RandomSeed() {
   let s = RandomWord() + "-";
   for (let i = 0; i < 3; i++)
     s += RandomInteger(0,9);
@@ -551,11 +551,13 @@ export class SaturnElement {
 
 const PLAYER_ELEMENT_BOUNDS = [2, 2];
 export class PlayerSpawn {
-  constructor(cube_element, x, y) {
+  constructor(cube_element, options) {
     this.cube_element = cube_element;
+    this.options = options || {};
     this.saturn = cube_element.saturn;
-    this.x = x;
-    this.y = y;
+    this.x = this.options.x;
+    this.y = this.options.y;
+    this.id = this.options.id;
     this.enabled = false;
   }
 
@@ -565,6 +567,8 @@ export class PlayerSpawn {
   setEnabled() { this.enabled = true; };
   isEnabled() { return this.enabled; }
   isDisabled() { return !this.enabled; }
+
+  getID() { return this.id; }
 
   getPosition() {
     return [this.x + this.cube_element.x * CubeDimensions[0],
@@ -601,10 +605,10 @@ export class SaturnCubeElement {
     this.x = x;
     this.y = y;
     this.player_spawns = [
-      new PlayerSpawn(this, 2, 2),
-      new PlayerSpawn(this, 6, 2),
-      new PlayerSpawn(this, 2, 6),
-      new PlayerSpawn(this, 6, 6),
+      new PlayerSpawn(this, {x : 2, y : 2, id:"player_spawn_00"}),
+      new PlayerSpawn(this, {x : 6, y : 2, id:"player_spawn_01"}),
+      new PlayerSpawn(this, {x : 2, y : 6, id:"player_spawn_10"}),
+      new PlayerSpawn(this, {x : 6, y : 6, id:"player_spawn_11"}),
     ];
   }
 
