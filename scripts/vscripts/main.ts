@@ -200,37 +200,37 @@ let world_render = null;
 function GenerateWorldRender() {
     if (world_render !== null) world_render.clear();
     let procgen = new ProcGen(null, {
-	RoomPlacement: {
-	    num_rooms: 12,
-	},
-	CellularAutomata: {
-	    Splotch: {
-		cycles: 25,
-	    },
-	    Solidify: {
-		cycles: 2,
-		threshold: 5,
-	    },
-	},
-	BridgePlacement: {
-	    enabled: true,
-	},
-	CoverPlacement: {
-	    num_cover: 20,
-	},
-	WindowPlacement: {
-	    num_windows: 30,
-	    penetration: 3,
-	},
-	MountainPlacement: {
-	    num_mountains: 5,
-	},
-	PlayerPlacement: {
-	    enabled: true,
-	},
-	PropPlacement: {
-	    
-	},
+        RoomPlacement: {
+            num_rooms: 12,
+        },
+        CellularAutomata: {
+            Splotch: {
+                cycles: 25,
+            },
+            Solidify: {
+                cycles: 2,
+                threshold: 5,
+            },
+        },
+        BridgePlacement: {
+            enabled: true,
+        },
+        CoverPlacement: {
+            num_cover: 20,
+        },
+        WindowPlacement: {
+            num_windows: 30,
+            penetration: 3,
+        },
+        MountainPlacement: {
+            num_mountains: 5,
+        },
+        PlayerPlacement: {
+            enabled: true,
+        },
+        PropPlacement: {
+            
+        },
     }).process();
 
     world_render = new SaturnValveWorldRender(procgen, {}).render();

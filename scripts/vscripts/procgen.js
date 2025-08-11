@@ -572,12 +572,12 @@ export class PlayerSpawn {
 
   getPosition() {
     return [this.x + this.cube_element.x * CubeDimensions[0],
-	    this.y + this.cube_element.y * CubeDimensions[1]];
+            this.y + this.cube_element.y * CubeDimensions[1]];
   }
 
   getValvePosition() {
     return [(this.x + this.cube_element.x * CubeDimensions[0]) * ElementDimensions[0],
-	    (this.y + this.cube_element.y * CubeDimensions[1]) * ElementDimensions[1]];
+            (this.y + this.cube_element.y * CubeDimensions[1]) * ElementDimensions[1]];
   }
 
   getBBox() {
@@ -656,7 +656,7 @@ export class SaturnCube {
   forEachIndex(f) {
     for (let j = 0; j < this.height(); j++) {
       for (let i = 0; i < this.width(); i++) {
-	f.bind(this)(i, j);
+        f.bind(this)(i, j);
       }
     }
   }
@@ -692,7 +692,7 @@ export class Saturn2D {
   forEachIndex(f) {
     for (let j = 0; j < this.height(); j++) {
       for (let i = 0; i < this.width(); i++) {
-	f.bind(this)(i,j);
+        f.bind(this)(i,j);
       }
     }    
   }
@@ -724,7 +724,7 @@ export class Pathfinding {
     let unvisited_nodes = [];
     do {
       unvisited_nodes = saturn2D.elements.filter((element) => 
-	(!element.visited && element.sentinel !== null));
+        (!element.visited && element.sentinel !== null));
       unvisited_nodes.forEach((e) => this._calculateCost(saturn2D, e.x, e.y));
     } while(unvisited_nodes.length > 0);
     return saturn2D;
@@ -1079,12 +1079,12 @@ export class Saturn {
     let elements = [];
     for (let k = 0; k < this.depth(); k++) {
       for (let j = y; j < (y+h); j++) {
-	for (let i = x; i < (x+w); i++) {
-	  if (bIncludeDepth && k !== 0)
-	    elements.push(this.getAt(i,j,k));
-	  else if (k === 0)
-	    elements.push(this.getAt(i,j,k));
-	}
+        for (let i = x; i < (x+w); i++) {
+          if (bIncludeDepth && k !== 0)
+            elements.push(this.getAt(i,j,k));
+          else if (k === 0)
+            elements.push(this.getAt(i,j,k));
+        }
       }
     }
     return elements;
@@ -1142,32 +1142,32 @@ export class Saturn {
     let enabled_players = [];
     this.cubes.forEachIndex((i, j) => {
       this.cubes.getAt(i, j).getPlayerSpawns()
-	.filter((p) => p.isEnabled())
-	.forEach((p) => enabled_players.push(p));
+        .filter((p) => p.isEnabled())
+        .forEach((p) => enabled_players.push(p));
     });
 
     let s = "";
     for (let j = 0; j < this.height(); j++) {
       for (let i = 0; i < this.width(); i++) {
-	let element = this.getAt(i,j,0);
+        let element = this.getAt(i,j,0);
 
-	// Display Player Spawns
-	if (enabled_players.some((p) => p.getBBox().checkInside(element.getBBox()))) {
-	  s += "P";
-	  continue;
-	}
+        // Display Player Spawns
+        if (enabled_players.some((p) => p.getBBox().checkInside(element.getBBox()))) {
+          s += "P";
+          continue;
+        }
 
-	switch(element.getType()) {
-	  case "fill":    s += "X"; break;
-	  case "floor":   s += "."; break;
-	  case "bridge":  s += "b"; break;
-	  case "empty":   s += " "; break;
-	  case "cover":   s += "c"; break;
-	  case "window":  s += "W"; break;
-	  case "mountain":s += "M"; break;
-	  case "trophy":  s += "T"; break;
-	  default:        s += "?"; break;
-	}
+        switch(element.getType()) {
+          case "fill":    s += "X"; break;
+          case "floor":   s += "."; break;
+          case "bridge":  s += "b"; break;
+          case "empty":   s += " "; break;
+          case "cover":   s += "c"; break;
+          case "window":  s += "W"; break;
+          case "mountain":s += "M"; break;
+          case "trophy":  s += "T"; break;
+          default:        s += "?"; break;
+        }
       }
       s += "\n";
     }
@@ -1240,51 +1240,51 @@ export class RoomPlacement {
       let layout_type = this.srng.randomDistribution(this.layout_distribution);
       let room_dimensions = [0, 0];
       if (layout_type == "BigRoom") {
-	room_dimensions[0] = this.srng.randomInteger(10,20);
-	room_dimensions[1] = this.srng.randomInteger(10,20);
+        room_dimensions[0] = this.srng.randomInteger(10,20);
+        room_dimensions[1] = this.srng.randomInteger(10,20);
       }
       else if (layout_type == "SmallRoom") {
-	room_dimensions[0] = this.srng.randomInteger(5,10);
-	room_dimensions[1] = this.srng.randomInteger(5,10);
+        room_dimensions[0] = this.srng.randomInteger(5,10);
+        room_dimensions[1] = this.srng.randomInteger(5,10);
       }
       else if (layout_type == "LongRoom") {
-	// Horizontal
-	if (this.srng.randomChance(0.5)) {
-	  room_dimensions[0] = this.srng.randomInteger(10,20);
-	  room_dimensions[1] = this.srng.randomInteger(5,7);
-	}
-	// Vertical
-	else {
-	  room_dimensions[0] = this.srng.randomInteger(5,7);
-	  room_dimensions[1] = this.srng.randomInteger(10,20);
-	}
+        // Horizontal
+        if (this.srng.randomChance(0.5)) {
+          room_dimensions[0] = this.srng.randomInteger(10,20);
+          room_dimensions[1] = this.srng.randomInteger(5,7);
+        }
+        // Vertical
+        else {
+          room_dimensions[0] = this.srng.randomInteger(5,7);
+          room_dimensions[1] = this.srng.randomInteger(10,20);
+        }
       }
 
       // Get Starting X and Y positions to place the top-left corner
       // of the room.
       let room_position = [
-	this.srng.randomInteger(this.saturn.width()-1),
-	this.srng.randomInteger(this.saturn.height()-1),
+        this.srng.randomInteger(this.saturn.width()-1),
+        this.srng.randomInteger(this.saturn.height()-1),
       ];
       
       let room = new Room(
-	room_position[0],
-	room_position[1],
-	room_dimensions[0],
-	room_dimensions[1],
+        room_position[0],
+        room_position[1],
+        room_dimensions[0],
+        room_dimensions[1],
       );
 
       if (!this.saturn.getBBox().checkInside(room.getBBox()))
-       	continue;
+        continue;
       
       // Check if it can co-exist with other placed rooms
       let bCollision = false;
       for (let i = 0; i < this.placed_rooms.length; i++) {
-	let placed_room = this.placed_rooms[i];
-	if (room.getBBox().checkIntersection(placed_room.getBBox())) {
-	  bCollision = true;
-	  break;
-	}
+        let placed_room = this.placed_rooms[i];
+        if (room.getBBox().checkIntersection(placed_room.getBBox())) {
+          bCollision = true;
+          break;
+        }
       }
       if (!bCollision) this.placed_rooms.push(room);
     }
@@ -1294,11 +1294,11 @@ export class RoomPlacement {
   _modifySaturn() {
     this.saturn.forEachIndex((i,j,k) => {
       if (this.isInRoomBorder(i,j,k)) {
-	this.saturn.getAt(i, j, k).fill();
+        this.saturn.getAt(i, j, k).fill();
       }
       if (this.isInRoom(i,j,k)) {
-	let element = this.saturn.getAt(i,j,k);
-	if (k == 0) element.floor();
+        let element = this.saturn.getAt(i,j,k);
+        if (k == 0) element.floor();
       }
     });
 
@@ -1309,8 +1309,8 @@ export class RoomPlacement {
     let bCollision = false;
     this.placed_rooms.map((placed_room) => {
       if ((x >= placed_room.x+1 && x <= (placed_room.x + placed_room.w-2)) &&
-	  (y >= placed_room.y+1 && y <= (placed_room.y + placed_room.h-2))) {
-	bCollision = true;
+          (y >= placed_room.y+1 && y <= (placed_room.y + placed_room.h-2))) {
+        bCollision = true;
       }
     });
     return bCollision;
@@ -1320,10 +1320,10 @@ export class RoomPlacement {
     let bCollision = false;
     this.placed_rooms.map((placed_room) => {
       if ((x == placed_room.x || x == (placed_room.x + placed_room.w-1)) &&
-	  (y >= placed_room.y && y <= (placed_room.y + placed_room.h-1)) ||
-	  (y == placed_room.y || y == (placed_room.y + placed_room.h-1)) &&
-	  (x >= placed_room.x && x <= (placed_room.x + placed_room.w-1))) {
-	bCollision = true;
+          (y >= placed_room.y && y <= (placed_room.y + placed_room.h-1)) ||
+          (y == placed_room.y || y == (placed_room.y + placed_room.h-1)) &&
+          (x >= placed_room.x && x <= (placed_room.x + placed_room.w-1))) {
+        bCollision = true;
       }
     });
     return bCollision;
@@ -1426,8 +1426,8 @@ export class SplotchSystem {
       let xpos = this.srng.randomInteger(lower_bound_x, upper_bound_x);
       let ypos = this.srng.randomInteger(lower_bound_y, upper_bound_y);
       if (this.saturn.getAt(xpos, ypos, 0).isEmpty()) {
-	starting_point = [xpos, ypos];
-	break;
+        starting_point = [xpos, ypos];
+        break;
       }
     }
 
@@ -1438,8 +1438,8 @@ export class SplotchSystem {
     this.splotch_listing.push(new SplotchCell(this.procgen, x, y));
     for (let ic = 0; ic < this.cycles; ic++) {
       let spawn_wave = this.splotch_listing.reduce((acc, splotch) => {
-	let siblings = splotch.tick() || [];
-	return acc.concat(siblings);
+        let siblings = splotch.tick() || [];
+        return acc.concat(siblings);
       }, []);
       this.splotch_listing = this.splotch_listing.concat(spawn_wave);
     }
@@ -1486,10 +1486,10 @@ export class SolidifySystem {
   _tick() {
     this.saturn.forEachIndex((i,j,k) => {
       if (k != 0 ||
-	  i <= 0 ||
-	  j <= 0 ||
-	  i >= this.saturn.width()-1 ||
-	  j >= this.saturn.height()-1) return;
+          i <= 0 ||
+          j <= 0 ||
+          i >= this.saturn.width()-1 ||
+          j >= this.saturn.height()-1) return;
       let getAt = (i,j) => this.saturn.getAt(i,j,0);
       let solid_count = 0; // Adjacent walls have double weight.
       if (!getAt(i,j+1).isEmpty()) solid_count += 2;
@@ -1505,9 +1505,9 @@ export class SolidifySystem {
       // Modify Saturn
       let element = getAt(i,j);
       if (solid_count < this.threshold && element.isFloor())
-	element.empty();
+        element.empty();
       if (solid_count >= this.threshold && element.isEmpty())
-	element.floor();
+        element.floor();
     });
 
     return this;
@@ -1569,7 +1569,7 @@ export class BridgePlacement {
     }, {x: 0, y: 0});
     let num_rooms = this.procgen.roomPlacement.num_rooms;
     let average_position = {x: Math.round(room_total.x/num_rooms),
-			    y: Math.round(room_total.y/num_rooms)};
+                            y: Math.round(room_total.y/num_rooms)};
     return average_position;
   }
 
@@ -1593,23 +1593,23 @@ export class BridgePlacement {
 
       // Find room borders that are openings and expand them.
       if (this.procgen.roomPlacement.isInRoomBorder(i, j, 0) &&
-	  element.isFloor()) {
-	// Check for Vertical Opening
-	if (getAt(i-1, j).isFill() &&
-	    getAt(i+1, j).isFill() &&
-	    getAt(i, j-1).isFloor() &&
-	    getAt(i, j+1).isFloor()) {
-	  getAt(i-1, j).floor();
-	  getAt(i+1, j).floor();
-	}
-	// Check for Horizontal Opening
-	else if (getAt(i-1, j).isFloor() &&
-		 getAt(i+1, j).isFloor() &&
-		 getAt(i, j-1).isFill() &&
-		 getAt(i, j+1).isFill()) {
-	  getAt(i, j-1).floor();
-	  getAt(i, j+1).floor();
-	}
+          element.isFloor()) {
+        // Check for Vertical Opening
+        if (getAt(i-1, j).isFill() &&
+            getAt(i+1, j).isFill() &&
+            getAt(i, j-1).isFloor() &&
+            getAt(i, j+1).isFloor()) {
+          getAt(i-1, j).floor();
+          getAt(i+1, j).floor();
+        }
+        // Check for Horizontal Opening
+        else if (getAt(i-1, j).isFloor() &&
+                 getAt(i+1, j).isFloor() &&
+                 getAt(i, j-1).isFill() &&
+                 getAt(i, j+1).isFill()) {
+          getAt(i, j-1).floor();
+          getAt(i, j+1).floor();
+        }
       }
     });
   }
@@ -1624,25 +1624,25 @@ export class BridgePlacement {
       
       // Find L & T-Junctions, and fill them in.
       if (element.isFloor() &&
-	  getAt(i-1, j-1).isEmpty() &&
-	  getAt(i+1, j-1).isEmpty() &&
-	  getAt(i+1, j+1).isEmpty() &&
-	  getAt(i-1, j+1).isEmpty()) {
-	let junctions = 0;
-	junctions += getAt(i, j-1).isFloor() ? 1 : 0;
-	junctions += getAt(i+1, j).isFloor() ? 1 : 0;
-	junctions += getAt(i-1, j).isFloor() ? 1 : 0;
-	junctions += getAt(i, j+1).isFloor() ? 1 : 0;
-	if (junctions >= 2) {
-	  getAt(i-1, j-1).floor();
-	  getAt(i, j-1).floor();
-	  getAt(i+1, j-1).floor();
-	  getAt(i+1, j).floor();
-	  getAt(i+1, j+1).floor();
-	  getAt(i, j+1).floor();
-	  getAt(i-1, j+1).floor();
-	  getAt(i-1, j).floor();
-	}
+          getAt(i-1, j-1).isEmpty() &&
+          getAt(i+1, j-1).isEmpty() &&
+          getAt(i+1, j+1).isEmpty() &&
+          getAt(i-1, j+1).isEmpty()) {
+        let junctions = 0;
+        junctions += getAt(i, j-1).isFloor() ? 1 : 0;
+        junctions += getAt(i+1, j).isFloor() ? 1 : 0;
+        junctions += getAt(i-1, j).isFloor() ? 1 : 0;
+        junctions += getAt(i, j+1).isFloor() ? 1 : 0;
+        if (junctions >= 2) {
+          getAt(i-1, j-1).floor();
+          getAt(i, j-1).floor();
+          getAt(i+1, j-1).floor();
+          getAt(i+1, j).floor();
+          getAt(i+1, j+1).floor();
+          getAt(i, j+1).floor();
+          getAt(i-1, j+1).floor();
+          getAt(i-1, j).floor();
+        }
       }
     });
   }
@@ -1657,19 +1657,19 @@ export class BridgePlacement {
       if (!element.isFloor()) return;
       // Check Vertical
       if (getAt(i-1, j).isEmpty() &&
-	  getAt(i+1, j).isEmpty() &&
-	  getAt(i, j-1).isFloor() &&
-	  getAt(i, j+1).isFloor()) {
-	getAt(i-1, j).floor();
-	getAt(i+1, j).floor();
+          getAt(i+1, j).isEmpty() &&
+          getAt(i, j-1).isFloor() &&
+          getAt(i, j+1).isFloor()) {
+        getAt(i-1, j).floor();
+        getAt(i+1, j).floor();
       }
       // Check Horizontal
       else if (getAt(i-1, j).isFloor() &&
-	       getAt(i+1, j).isFloor() &&
-	       getAt(i, j-1).isEmpty() &&
-	       getAt(i, j+1).isEmpty()) {
-	getAt(i, j-1).floor();
-	getAt(i, j+1).floor();
+               getAt(i+1, j).isFloor() &&
+               getAt(i, j-1).isEmpty() &&
+               getAt(i, j+1).isEmpty()) {
+        getAt(i, j-1).floor();
+        getAt(i, j+1).floor();
       }
     });
   }
@@ -1685,19 +1685,19 @@ export class BridgePlacement {
       
       // Check Top
       if (getAt(i, j-1).isFloor())
-	getAt(i, j-2).floor();
+        getAt(i, j-2).floor();
 
       // Check Right
       if (getAt(i+1, j).isFloor())
-	getAt(i+2, j).floor();
+        getAt(i+2, j).floor();
 
       // Check Bottom
       if (getAt(i, j+1).isFloor())
-	getAt(i, j+2).floor();
+        getAt(i, j+2).floor();
 
       // Check Left
       if (getAt(i-1, j).isFloor())
-	getAt(i-2, j).floor();
+        getAt(i-2, j).floor();
 
     });
   }
@@ -1709,7 +1709,7 @@ export class BridgePlacement {
     let average_position = this._getRoomsAveragePosition();
     // Generate shortest path to this point.
     let shortest_path = this.pathfinding.getShortestPaths(average_position.x,
-							  average_position.y);
+                                                          average_position.y);
     // Create Crawlers that traverse the Shortest pathing from
     // each room placement.
     let placed_rooms = this.procgen.roomPlacement.getPlacedRooms();
@@ -1768,7 +1768,7 @@ export class WormCrawler {
   
   _step() {
     if (this.step_num != 0 &&
-	(this.step_num % this.trail_step_interval) == 0)
+        (this.step_num % this.trail_step_interval) == 0)
       this.current_direction = this.srng.randomDistribution(this.distribution);
     switch(this.current_direction) {
       case "top": this._crawlTop(); break;
@@ -1876,7 +1876,7 @@ export class DiffusionLimitedAggregation {
       let y = this.srng.randomInteger(0, this.saturn.height()-1);
       let element = this.saturn.getAt(x, y, 0);
       if (this.filter_whitelist.includes(element.getType())) {
-	return element;
+        return element;
       }
     }
   }
@@ -1890,18 +1890,18 @@ export class DiffusionLimitedAggregation {
 
     // Check if the particle is near any aggregates
     if (this.current_aggregates.includes(this.particle.up()) ||
-	this.current_aggregates.includes(this.particle.right()) ||
-	this.current_aggregates.includes(this.particle.down()) ||
-	this.current_aggregates.includes(this.particle.left())) {
+        this.current_aggregates.includes(this.particle.right()) ||
+        this.current_aggregates.includes(this.particle.down()) ||
+        this.current_aggregates.includes(this.particle.left())) {
       // Check if I can place an aggregate here, otherwise fire a new particle.
       if (this.filter_whitelist.includes(this.particle.getType())) {
-	this.current_aggregates.push(this.particle);
-	this.particle = null;
-	return false;
+        this.current_aggregates.push(this.particle);
+        this.particle = null;
+        return false;
       }
       else {
-	this.particle = null;
-	return false;
+        this.particle = null;
+        return false;
       }
     }
 
@@ -1956,8 +1956,8 @@ export class RayTracing {
       let y = this.srng.randomFloat(0, this.saturn.height()-1);
       let element = this.saturn.getAt(Math.floor(x), Math.floor(y), 0);
       if (!this.func_collision(element) &&
-	  !this.func_negation(element)) {
-	return [x, y];
+          !this.func_negation(element)) {
+        return [x, y];
       }
     }
   }
@@ -2002,15 +2002,15 @@ export class RayTracing {
     while(this._getDistance() < this.max_distance) {
       this._propagateRay();
       element = this.saturn.locateElement(this.current_point[0],
-					  this.current_point[1]);
+                                          this.current_point[1]);
       if (this.current_element !== element) {
-	this.current_element = element;
-	if (this.func_collision(element)) {
-	  return element;
-	}
-	else if (this.func_negation(element)) {
-	  return null;
-	}
+        this.current_element = element;
+        if (this.func_collision(element)) {
+          return element;
+        }
+        else if (this.func_negation(element)) {
+          return null;
+        }
       }
     }
     return element;
@@ -2056,33 +2056,33 @@ export class WindowPlacement {
 
       // Vertical
       if (element.up().isFill() && element.down().isFill()) {
-	element.up().window();
-	element.down().window();
+        element.up().window();
+        element.down().window();
       }
       // Horizontal
       else if (element.left().isFill() && element.right().isFill()) {
-	element.left().window();
-	element.right().window();
+        element.left().window();
+        element.right().window();
       }
       // Corner Up-Left
       else if (element.down().isFill() && element.right().isFill()) {
-	element.down().window();
-	element.right().window();
+        element.down().window();
+        element.right().window();
       }
       // Corner Up-Right
       else if (element.down().isFill() && element.left().isFill()) {
-	element.down().window();
-	element.left().window();
+        element.down().window();
+        element.left().window();
       }
       // Corner Down-Left
       else if (element.up().isFill() && element.right().isFill()) {
-	element.up().window();
-	element.right().window();
+        element.up().window();
+        element.right().window();
       }
       // Corner Down-Right
       else if (element.up().isFill() && element.left().isFill()) {
-	element.up().window();
-	element.left().window();
+        element.up().window();
+        element.left().window();
       }
     });
   }
@@ -2094,9 +2094,9 @@ export class WindowPlacement {
     for (let i = 0; i < num_iterations; i++) {
       let raytracing = new RayTracing(this.procgen, {func_collision: ((e) => e.isFill())});
       for (let p = 0; p < this.penetration; p++) {
-	// Collide rays against the side of the buildings to make windows.
-	let element = raytracing.getRayCollision();
-	if (element !== null && element.isFill()) element.window();
+        // Collide rays against the side of the buildings to make windows.
+        let element = raytracing.getRayCollision();
+        if (element !== null && element.isFill()) element.window();
       }
     }
     this._cellAutomata_WindowExpand();
@@ -2247,9 +2247,9 @@ export class SimplexNoise {
     let h = this.saturn.height();
     for (let j = 0; j < h; j++) {
       for (let i = 0; i < w; i++) {
-	let xn = i / w * this.resolution[0] + this.offset[0];
-	let yn = j / h * this.resolution[1] + this.offset[1];
-	f.bind(this)(i, j, SimplexNoise.noise(xn, yn));
+        let xn = i / w * this.resolution[0] + this.offset[0];
+        let yn = j / h * this.resolution[1] + this.offset[1];
+        f.bind(this)(i, j, SimplexNoise.noise(xn, yn));
       }
     }
   }
@@ -2449,7 +2449,7 @@ export class VoronoiDiagram {
       point_left: new Point(e.lSite.x, e.lSite.y),
       point_right: new Point(e.rSite.x, e.rSite.y),
       edge_segment: new LineSegment(new Point(e.va.x, e.va.y),
-				    new Point(e.vb.x, e.vb.y)),
+                                    new Point(e.vb.x, e.vb.y)),
     };});
   }
 
@@ -2459,9 +2459,9 @@ export class VoronoiDiagram {
     return edges
       .map((edge) => [edge.va, edge.vb])
       .reduce((acc, edge_pair) => {
-	acc.push(edge_pair[0]);
-	acc.push(edge_pair[1]);
-	return acc;
+        acc.push(edge_pair[0]);
+        acc.push(edge_pair[1]);
+        return acc;
       }, [])
       .filter(onlyUnique)
       .map((e) => new Point(e.x, e.y));
@@ -2488,17 +2488,17 @@ export class MountainPlacement {
       let checkCollision = (element) => ["floor", "cover"].includes(element.getType());
       let checkNegation = (element) => ["fill", "window"].includes(element.getType());
       let raytracing = new RayTracing(this.procgen, {
-	func_collision: checkCollision,
-	func_negation: checkNegation,
+        func_collision: checkCollision,
+        func_negation: checkNegation,
       });
       let element = raytracing.getRayCollision();
       if (element !== null && checkCollision(element)) {
-	element.mountain();
-	let splotchSystem = new SplotchSystem(this.procgen, {
-	  splotch_type: "mountain",
-	  starting_point: [element.x, element.y],
-	});
-	splotchSystem.process();
+        element.mountain();
+        let splotchSystem = new SplotchSystem(this.procgen, {
+          splotch_type: "mountain",
+          starting_point: [element.x, element.y],
+        });
+        splotchSystem.process();
       }
     }
   }
@@ -2564,7 +2564,7 @@ export class PlayerPlacement {
       let player_bbox = player.getBBox().expand(5);
       let eplayer_bbox = eplayer.getBBox().expand(5);
       if (eplayer_bbox.checkIntersection(player_bbox)) {
-	return true;
+        return true;
       }
     }
     
@@ -2591,7 +2591,7 @@ export class PlayerPlacement {
       player.setEnabled();
 
       if (this.getEnabledPlayerSpawns().length >= this.num_player_spawns)
-	break;
+        break;
     }
 
     // Brute force spots on Saturn to place the rest of the player spawns.
@@ -2645,7 +2645,7 @@ export class PropPlacement {
       let ep = epoints[i];
       let element_bbox = this.saturn.locateElement(ep.x, ep.y).getBBox().expand(2);
       if (!players.some((p) => p.getBBox().expand(2).checkIntersection(element_bbox))) {
-	return ep;
+        return ep;
       }
     }
     
@@ -2655,7 +2655,7 @@ export class PropPlacement {
       let ey = this.srng.randomInteger(3, this.saturn.height()-4);
       let element_bbox = this.saturn.locateElement(ex, ey).getBBox().expand(2);
       if (!players.some((p) => p.getBBox().expand(2).getIntersection(element_bbox))) {
-	return new Point(ex, ey);
+        return new Point(ex, ey);
       }
     }
     return null;
@@ -2671,8 +2671,8 @@ export class PropPlacement {
     while (door_count < num_doors) {
       let door_element = raytraceDoor();
       if (door_element !== null) {
-	door_element.floor();
-	door_count += 1;
+        door_element.floor();
+        door_count += 1;
       }
     }
   }
@@ -2687,8 +2687,8 @@ export class PropPlacement {
     while (window_count < num_windows) {
       let window_element = raytraceWindow();
       if (window_element !== null) {
-	window_element.window();
-	window_count += 1;
+        window_element.window();
+        window_count += 1;
       }
     }
   }
@@ -2718,8 +2718,8 @@ export class PropPlacement {
     let pathcrawler = new PathCrawler(this.procgen, {});
     players.map((p) => p.getBBox().center().toArray().map((v) => Math.floor(v)))
       .forEach((p) => {
-	let path = pathfinding.getShortestPaths(element.x, element.y);
-	pathcrawler.crawl(path, p[0], p[1]);
+        let path = pathfinding.getShortestPaths(element.x, element.y);
+        pathcrawler.crawl(path, p[0], p[1]);
       });
     element.setType("trophy");
   }
@@ -2731,7 +2731,7 @@ export class PropPlacement {
 
     while(this._checkPlayerLineOfSight(player_left, player_right)) {
       let random_point = edge_segment.getNormalizedPoint(
-	this.srng.randomFloat(0, 1));
+        this.srng.randomFloat(0, 1));
       this.saturn.locateElement(random_point.x, random_point.y).fill();
       console.log("Random Point: ", random_point);
     }
