@@ -45,6 +45,13 @@
 //reverb_23_smallBathroom
 //reverb_24_largeBathroom
  
+        "saturn.ambience_01" = {
+                base = "amb.looping.stereo.base"
+                volume = 0.1
+                pitch = 0.8
+                vsnd_files_track_01 = "sounds/ambience_01.vsnd"
+        }
+
 	"ambient_example.outdoors" = 
 	{
 		base = "amb.soundscapeParent.base"

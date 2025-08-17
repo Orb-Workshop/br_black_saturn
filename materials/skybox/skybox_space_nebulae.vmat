@@ -5,10 +5,18 @@ Layer0
 	shader "sky.vfx"
 
 	//---- Format ----
-	F_TEXTURE_FORMAT2 2 // HDR (float16)
+	F_TEXTURE_FORMAT2 3 // RGB (8-bit uncompressed)
 
 	//---- Texture ----
 	g_flBrightnessExposureBias "0.000"
 	g_flRenderOnlyExposureBias "0.000"
-	SkyTexture ""
+	SkyTexture "materials/skybox/night_space_panorama_output.png"
+
+
+	VariableState
+	{
+		"Texture"
+		{
+		}
+	}
 }
