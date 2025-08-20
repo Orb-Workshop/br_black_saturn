@@ -8,6 +8,54 @@ import ProcGen, {
 }
 from "procgen.js";
 
+
+const TARGET_EMITTER_SMOKEGRENADE = "saturn.entity_maker.smokegrenade";
+const TARGET_EMITTER_FLASHBANG = "saturn.entity_maker.flashbang";
+const TARGET_EMITTER_HEALTHSHOT = "saturn.entity_maker.healthshot";
+class SaturnValveWorldEmitter {
+    constructor(procgen, options) {
+	this.procgen = procgen;
+	this.saturn = procgen.saturn;
+	this.srng = procgen.srng;
+	this.options = options || {};
+    }
+
+    emitSmoke(x, y, z) {
+	let target_entity = SaturnValveWorldRender.GetElementEntityId(x, y, z);
+	target_entity += "_fill";
+	Instance.EntFireBroadcast(
+	    TARGET_EMITTER_SMOKEGRENADE,
+	    "ForceSpawnAtEntityOrigin",
+	    target_entity);
+    }
+
+    emitFlashbang(x, y, z) {
+	let target_entity = SaturnValveWorldRender.GetElementEntityId(x, y, z);
+	target_entity += "_fill";
+	Instance.EntFireBroadcast(
+	    TARGET_EMITTER_FLASHBANG,
+	    "ForceSpawnAtEntityOrigin",
+	    target_entity);
+    }
+
+    emitHealthshot(x, y, z) {
+	let target_entity = SaturnValveWorldRender.GetElementEntityId(x, y, z);
+	target_entity += "_fill";
+	Instance.EntFireBroadcast(
+	    TARGET_EMITTER_HEALTHSHOT,
+	    "ForceSpawnAtEntityOrigin",
+	    target_entity);
+	Instance.Msg("Emitting Healthshot at: " + target_entity);
+    }
+
+    render() {
+	let trophy_room = this.procgen.propPlacement.getTrophyRoom();
+	let element = trophy_room.element;
+	this.emitHealthshot(element.x, element.y, element.z+3);
+	return this;
+    }
+}
+
 class SaturnValveWorldRender {
     constructor(procgen, options) {
 	this.procgen = procgen;
@@ -15,25 +63,25 @@ class SaturnValveWorldRender {
 	this.srng = procgen.srng;
     }
 
-    _cubeIndex(x, y) {
+    static CubeIndex(x, y) {
 	return "cube." + y + x;
     }
 
-    _elementIndex(x, y, z) {
+    static ElementIndex(x, y, z) {
 	return "element." + z + y + x;
     }
 
-    getElementEntityId(x, y, z) {
+    static GetElementEntityId(x, y, z) {
 	let cubeIndex_x = Math.floor(x / CubeDimensions[0]);
 	let cubeIndex_y = Math.floor(y / CubeDimensions[1]);
-	let cubeIndex = this._cubeIndex(
+	let cubeIndex = SaturnValveWorldRender.CubeIndex(
             cubeIndex_x,
             cubeIndex_y,
 	);
 
 	let elementIndex_x = x % CubeDimensions[0];
 	let elementIndex_y = y % CubeDimensions[1];
-	let elementIndex = this._elementIndex(
+	let elementIndex = SaturnValveWorldRender.ElementIndex(
             elementIndex_x,
             elementIndex_y,
             z,
@@ -43,10 +91,10 @@ class SaturnValveWorldRender {
     }
 
     _elementFill(x, y, z) {
-	let target = this.getElementEntityId(x, y, z) + "_fill";
+	let target = SaturnValveWorldRender.GetElementEntityId(x, y, z) + "_fill";
 	Instance.EntFireBroadcast(target, "Enable");
 	if (z == 0) {
-	    target = this.getElementEntityId(x, y, z) + "_floor";
+	    target = SaturnValveWorldRender.GetElementEntityId(x, y, z) + "_floor";
 	    Instance.EntFireBroadcast(target, "Enable");
 	    this._elementColor(target, 1, 1, 0);
 	}
@@ -57,13 +105,13 @@ class SaturnValveWorldRender {
     }
 
     _elementFloor(x, y, z) {
-	let target = this.getElementEntityId(x, y, z) + "_floor";
+	let target = SaturnValveWorldRender.GetElementEntityId(x, y, z) + "_floor";
 	Instance.EntFireBroadcast(target, "Enable");
 	this._elementColor(target, 180, 180, 158);
     }
 
     _elementDisable(x, y, z) {
-	let target = this.getElementEntityId(x, y, z)
+	let target = SaturnValveWorldRender.GetElementEntityId(x, y, z)
 	let target_fill = target + "_fill";
 	Instance.EntFireBroadcast(target_fill, "Disable");
 	
@@ -116,7 +164,7 @@ class SaturnValveWorldRender {
 	this._attachPlayerSpawns();
 	this.saturn.forEachIndex((i, j, k) => {
 	    let element = this.saturn.getAt(i, j, k);
-	    let genTarget = (i, j, k) => {return this.getElementEntityId(i, j, k) + "_fill";};
+	    let genTarget = (i, j, k) => {return SaturnValveWorldRender.GetElementEntityId(i, j, k) + "_fill";};
 	    let getAt = (i, j, k) => this.saturn.getAt(i, j, k);
 	    if (k !== 0) return;
 	    let _type = element.getType();
@@ -197,6 +245,7 @@ class SaturnValveWorldRender {
 }
 
 let world_render = null;
+let world_emitter = null;
 function GenerateWorldRender() {
     if (world_render !== null) world_render.clear();
     let procgen = new ProcGen(null, {
@@ -248,11 +297,18 @@ function ClearWorldRender() {
     }
 }
 
+function GenerateWorldEmitter() {
+    if (world_render !== null) {
+	let procgen = world_render.procgen;
+	//world_emitter = new SaturnValveWorldEmitter(procgen, {}).render();
+    }
+}
+
 Instance.PublicMethod("GenerateWorldRender", () => GenerateWorldRender());
 Instance.PublicMethod("ClearWorldRender", () => ClearWorldRender());
+Instance.PublicMethod("GenerateWorldEmitter", () => GenerateWorldEmitter());
 
-let saturn_init = false;
+
 Instance.InitialActivate(() => {
-    saturn_init = true
     world_render = GenerateWorldRender();
 });
