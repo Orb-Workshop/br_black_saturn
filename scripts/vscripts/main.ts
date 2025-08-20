@@ -48,7 +48,7 @@ class SaturnValveWorldEmitter {
 	Instance.Msg("Emitting Healthshot at: " + target_entity);
     }
 
-    render() {
+    emit() {
 	let trophy_room = this.procgen.propPlacement.getTrophyRoom();
 	let element = trophy_room.element;
 	this.emitHealthshot(element.x, element.y, element.z+3);
@@ -300,7 +300,7 @@ function ClearWorldRender() {
 function GenerateWorldEmitter() {
     if (world_render !== null) {
 	let procgen = world_render.procgen;
-	//world_emitter = new SaturnValveWorldEmitter(procgen, {}).render();
+	world_emitter = new SaturnValveWorldEmitter(procgen, {}).emit();
     }
 }
 
