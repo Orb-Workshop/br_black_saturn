@@ -13,10 +13,10 @@ const TARGET_EMITTER_SMOKEGRENADE = "saturn.entity_maker.smokegrenade";
 const TARGET_EMITTER_FLASHBANG = "saturn.entity_maker.flashbang";
 const TARGET_EMITTER_HEALTHSHOT = "saturn.entity_maker.healthshot";
 class SaturnValveWorldEmitter {
-    constructor(procgen, options) {
-	this.procgen = procgen;
-	this.saturn = procgen.saturn;
-	this.srng = procgen.srng;
+    constructor(world_render, options) {
+	this.procgen = world_render.procgen;
+	this.saturn = world_render.procgen.saturn;
+	this.srng = world_render.procgen.srng;
 	this.options = options || {};
     }
 
@@ -61,6 +61,7 @@ class SaturnValveWorldRender {
 	this.procgen = procgen;
 	this.saturn = procgen.saturn;
 	this.srng = procgen.srng;
+	this.emitter = new SaturnValveWorldEmitter(this, {});
     }
 
     static CubeIndex(x, y) {
@@ -245,7 +246,6 @@ class SaturnValveWorldRender {
 }
 
 let world_render = null;
-let world_emitter = null;
 function GenerateWorldRender() {
     if (world_render !== null) world_render.clear();
     let procgen = new ProcGen(null, {
@@ -299,8 +299,8 @@ function ClearWorldRender() {
 
 function GenerateWorldEmitter() {
     if (world_render !== null) {
-	let procgen = world_render.procgen;
-	world_emitter = new SaturnValveWorldEmitter(procgen, {}).emit();
+	// TODO: BUGGED
+	// world_render.emitter.emit();
     }
 }
 
