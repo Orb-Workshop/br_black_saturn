@@ -1,28 +1,11 @@
 //@ts-nocheck
 import { Instance } from "cspointscript";
 
-let target_relay = null; // logic_relay entity which ends the round.
+// Breakout Logic Relays
+const TARGET_END_ROUND_HOOK = "brm.end_round_hook";
+const TARGET_DUEL_HOOK = "brm.player_duel_hook";
+const TARGET_PLAYER_DEATH_HOOK = "brm.player_death_hook";
 
-function EndRound() {
-    if (target_relay !== null) {
-	Instance.Msg("Firing End Round Relay Trigger: " + target_relay);
-	Instance.EntFireBroadcast(target_relay, "Trigger");
-
-    }
-    else {
-	Instance.Msg("ERROR - Battle Royale Mode: Unable to End Round, Not Initialized");
-    }
-}
-
-// Switches all T players over to CT side.
-function PopulateCTs() {
-    let players = GetPlayers();
-    players.forEach((p) => {
-	if (p.GetTeamNumber() == 2) { // T
-	    p.ChangeTeam(3);
-	}
-    });
-}
 
 function GetPlayers() {
     let max_player_slots = 999;
@@ -34,22 +17,43 @@ function GetPlayers() {
     return players;
 }
 
-Instance.PublicMethod("InitBattleRoyale", (targetname: string) => {
-    target_relay = targetname;
+
+function GetCTPlayers() {
+   return GetPlayers().filter((p) => p.GetTeamNumber() == 3); // CTs
+}
+
+
+// Switches all T players over to CT side.
+function PopulateCTs() {
+    let players = GetPlayers();
+    players.forEach((p) => {
+	if (p.GetTeamNumber() == 2) { // T
+	    p.ChangeTeam(3); // CT
+	}
+    });
+}
+
+
+Instance.PublicMethod("InitBattleRoyale", () => {
     Instance.Msg("Enabled Battle Royale Mode!");
-    Instance.Msg("- Point Server Command Entity ID: " + targetname);
-    Instance.Msg("- Forcing everyone on to CT side...");
+    Instance.Msg("- Forcing Ts on to CT side...");
     PopulateCTs();
 });
 
+
 // Should be called upon a 'player_death' event from an EventListener Entity
 Instance.PublicMethod("CheckBattleRoyale", () => {
-    let ct_players = GetPlayers().filter((p) => p.GetTeamNumber() == 3); // CTs
+    let ct_players = GetCTPlayers();
     if (ct_players.length <= 1) {
 	Instance.Msg("Battle Royale Mode: Winner Winner, Chicken Dinner!");
-	EndRound();
+	Instance.EntFireBroadcast(TARGET_END_ROUND_HOOK, "Trigger");
+    }
+    else if (ct_players.length == 2) { // Duel
+	Instance.Msg("Duel!");
+	Instance.EntFireBroadcast(TARGET_DUEL_HOOK, "Trigger");
     }
     else {
-	Instance.Msg("Battle Royale Mode: Players Remaining - " + players.length);
+	Instance.Msg("Battle Royale Mode: Players Remaining - " + ct_players.length);
+	Instance.EntFireBroadcast(TARGET_PLAYER_DEATH_HOOK, "Trigger");
     }
 });

@@ -2754,6 +2754,10 @@ export class PropPlacement {
     return true;
   }
 
+  getTrophyRoom() {
+    return this.trophy_room;
+  }
+
   process() {
     let players = this.procgen.playerPlacement.getEnabledPlayerSpawns();
     // Form a Voronoi between player spawns to find the best places to

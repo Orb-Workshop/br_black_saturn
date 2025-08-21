@@ -44,12 +44,181 @@
 //reverb_22_outsideOpen
 //reverb_23_smallBathroom
 //reverb_24_largeBathroom
- 
+
+        "amb.announcement" = {
+                type = "csgo_mega"
+                use_distance_volume_mapping_curve = true
+                distance_volume_mapping_curve = [
+                    [ 0.0, 1.0, 0.0, 0.0, 2.0, 3.0, ],
+                    [ 5000.0, 1.0, 0.0, 0.0, 2.0, 3.0, ],
+                ]
+                use_distance_unfiltered_stereo_mapping_curve = true
+                distance_unfiltered_stereo_mapping_curve = [
+                    [ 0.0, 1.0, 0.0, 0.0, 2.0, 3.0, ],
+                    [ 5000.0, 1.0, 0.0, 0.0, 2.0, 3.0, ],
+                ]
+        }
+
+	"saturn.ambience.outdoors" = 
+	{
+		base = "amb.soundscapeParent.base"
+		enable_child_events = true
+		dsp_preset = "reverb_22_outsideOpen"
+		soundevent_01 = 
+		[
+			"saturn.ambience_01",
+                        "saturn.ambience.random_screeches",
+                        "saturn.ambience.random_zaps",
+		]
+	}
+
         "saturn.ambience_01" = {
                 base = "amb.looping.stereo.base"
-                volume = 0.1
+                volume = 0.07
                 pitch = 0.8
                 vsnd_files_track_01 = "sounds/ambience_01.vsnd"
+        }
+
+        "saturn.ambience.random_screeches" =
+	{
+		base = "amb.intermittent.randomAroundPlayer.base"
+		volume = 0.5
+		randomize_position_min_radius = 500.0
+		randomize_position_max_radius = 1000.0
+		randomize_position_hemisphere = false
+		retrigger_interval_min = 10.0
+		retrigger_interval_max = 15.0
+		retrigger_radius = 1000.0
+		vsnd_files_track_01 = 
+		[
+                        "sounds/screech/screech01.vsnd",
+                        "sounds/screech/screech02.vsnd",
+                        "sounds/screech/screech03.vsnd",
+                        "sounds/screech/screech04.vsnd",
+		]
+	}
+
+        "saturn.ambience.random_zaps" =
+	{
+		base = "amb.intermittent.randomAroundPlayer.base"
+		volume = 0.1
+		randomize_position_min_radius = 500.0
+		randomize_position_max_radius = 1000.0
+		randomize_position_hemisphere = false
+		retrigger_interval_min = 10.0
+		retrigger_interval_max = 30.0
+		retrigger_radius = 1000.0
+		vsnd_files_track_01 = 
+		[
+                        "sounds/zap/zap01.vsnd",
+                        "sounds/zap/zap02.vsnd",
+                        "sounds/zap/zap03.vsnd",
+		]
+	}
+
+        "saturn.distress00" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/distress/distress00.vsnd"
+        }
+
+        "saturn.distress01" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/distress/distress01.vsnd"
+        }
+
+        "saturn.distress02" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/distress/distress02.vsnd"
+                volume = 0.1
+        }
+
+        "saturn.distress03" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/distress/distress03.vsnd"
+        }
+
+        "saturn.distress04" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/distress/distress04.vsnd"
+        }
+
+        "saturn.jingle00" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/jingle/jingle00.vsnd"
+        }
+
+        "saturn.jingle01" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/jingle/jingle01.vsnd"
+        }
+
+        "saturn.screech01" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/screech/screech01.vsnd"
+        }
+
+        "saturn.screech02" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/screech/screech02.vsnd"
+        }
+
+        "saturn.screech03" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/screech/screech03.vsnd"
+        }
+
+        "saturn.screech04" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/screech/screech04.vsnd"
+        }
+
+        "saturn.zap00" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/zap/zap00.vsnd"
+        }
+
+        "saturn.zap01" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/zap/zap01.vsnd"
+        }
+
+        "saturn.zap02" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/zap/zap02.vsnd"
+        }
+
+        "saturn.bongbong00" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/bongbong00.vsnd"
+                volume = 0.3
+        }
+
+        "saturn.bongbong01" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/bongbong01.vsnd"
+                volume = 0.3
+        }
+
+        "saturn.tone00" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/tone00.vsnd"
+        }
+
+        "saturn.tone01" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/tone01.vsnd"
+        }
+
+        "saturn.press_the_attack00" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/press_the_attack00.vsnd"
+        }
+
+        "saturn.victory00" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/victory00.vsnd"
+                volume = 0.3
+                pitch = 1.1
         }
 
 	"ambient_example.outdoors" = 
