@@ -66,7 +66,7 @@
 		dsp_preset = "reverb_22_outsideOpen"
 		soundevent_01 = 
 		[
-			"saturn.ambience_01",
+			"saturn.ambience_02",
                         "saturn.ambience.random_screeches",
                         "saturn.ambience.random_zaps",
 		]
@@ -74,9 +74,16 @@
 
         "saturn.ambience_01" = {
                 base = "amb.looping.stereo.base"
-                volume = 0.07
-                pitch = 0.8
+                volume = 0.1
+                pitch = 1
                 vsnd_files_track_01 = "sounds/ambience_01.vsnd"
+        }
+
+        "saturn.ambience_02" = {
+                base = "amb.looping.stereo.base"
+                volume = 0.1
+                pitch = 1.1
+                vsnd_files_track_01 = "sounds/ambience_02.vsnd"
         }
 
         "saturn.ambience.random_screeches" =
@@ -110,11 +117,36 @@
 		retrigger_radius = 1000.0
 		vsnd_files_track_01 = 
 		[
+                        "sounds/zap/zap00.vsnd",
                         "sounds/zap/zap01.vsnd",
                         "sounds/zap/zap02.vsnd",
-                        "sounds/zap/zap03.vsnd",
 		]
 	}
+
+        "saturn.round_freeze_end" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/entrance/entrance_00.vsnd"
+                volume = 0.1
+        }
+
+        "saturn.duel" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/bongbong01.vsnd"
+                volume = 0.3
+        }
+
+        "saturn.player_death" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/bongbong00.vsnd"
+                volume = 0.3
+        }
+
+        "saturn.end_round" = {
+                base = "amb.announcement"
+                vsnd_files_track_01 = "sounds/victory00.vsnd"
+                volume = 0.3
+                pitch = 1.1
+        }
 
         "saturn.distress00" = {
                 base = "amb.announcement"
