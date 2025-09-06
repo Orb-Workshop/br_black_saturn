@@ -6,6 +6,8 @@ const TARGET_END_ROUND_HOOK = "brm.end_round_hook";
 const TARGET_DUEL_HOOK = "brm.player_duel_hook";
 const TARGET_PLAYER_DEATH_HOOK = "brm.player_death_hook";
 
+// Global Variables
+let total_alive_players = 0;
 
 function GetPlayers() {
     let max_player_slots = 999;
@@ -40,20 +42,26 @@ Instance.PublicMethod("InitBattleRoyale", () => {
     PopulateCTs();
 });
 
+// Call at freeze_time.
+Instance.PublicMethod("StartBattleRoyale", () => {
+    total_alive_players = GetCTPlayers().length;
+});
 
 // Should be called upon a 'player_death' event from an EventListener Entity
 Instance.PublicMethod("CheckBattleRoyale", () => {
-    let ct_players = GetCTPlayers();
-    if (ct_players.length <= 1) {
+    total_alive_players--;
+    
+    if (total_alive_players <= 1) {
 	Instance.Msg("Battle Royale Mode: Winner Winner, Chicken Dinner!");
 	Instance.EntFireBroadcast(TARGET_END_ROUND_HOOK, "Trigger");
     }
-    else if (ct_players.length == 2) { // Duel
+    else if (total_alive_players == 2) { // Duel
 	Instance.Msg("Duel!");
 	Instance.EntFireBroadcast(TARGET_DUEL_HOOK, "Trigger");
     }
     else {
-	Instance.Msg("Battle Royale Mode: Players Remaining - " + ct_players.length);
+	Instance.Msg("Battle Royale Mode: Players Remaining - " +
+	    total_alive_players);
 	Instance.EntFireBroadcast(TARGET_PLAYER_DEATH_HOOK, "Trigger");
     }
 });
