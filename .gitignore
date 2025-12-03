@@ -1,23 +1,54 @@
+# dependencies (bun install)
+node_modules
+
+# output
+out
+dist
+*.tgz
+
+# code coverage
+coverage
+*.lcov
+
+# logs
+logs
+_.log
+report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
+
+# dotenv environment variable files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# caches
+.eslintcache
+.cache
+*.tsbuildinfo
+
+# IntelliJ based IDEs
+.idea
+
+# Finder (MacOS) folder config
+.DS_Store
+
+# Comment if you want to include the build with the map
+scripts/main.js
+
+# CS2 Specific
 _other/.autosave
-_other/de_northern_graph.resources
-_other/de_northern_graph.resources.algautosave
+_other/*_graph.resources
+_other/*_graph.resources.algautosave
 _other/radgencommands.txt
 /_bakeresourcecache
 materials/radgen/
 _other/vtexcommands.txt
-maps/de_northern.log
+maps/*.log
 AssetBrowserSavedSearches.kv3
-maps/de_northern_bakeresourcecache.vpk
+maps/*_bakeresourcecache.vpk
 *.exr
 *.vpk
-_radgen_extras/Overview/de_northern_radar_remove_mask.png
-_radgen_extras/Overview/de_northern_radar_radgen_box_mask.png
-_radgen_extras/Overview/de_northern_radar_overlays_mask.png
-_radgen_extras/Overview/de_northern_radar_overlap_mask.png
-_radgen_extras/Overview/de_northern_radar_ladder_mask.png
-_radgen_extras/Overview/de_northern_radar_door_mask.png
-_radgen_extras/Overview/de_northern_radar_danger_mask.png
+_radgen_extras/Overview/*.png
 materials/test.vmat
 \.*
-cs2typescript/config.json
-node_modules

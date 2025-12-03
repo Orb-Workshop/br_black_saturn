@@ -1,11 +1,19 @@
 {
-    "name": "br_black_saturn",
-    "type": "module",
-    "version": "1.0.0",
-    "scripts": {
-        "start": "s2ts start"
-    },
-    "dependencies": {
-        "s2ts": "file:third_party/s2ts/packages/s2ts"
-    }
+  "name": "br_black_saturn",
+  "module": "scripts/main.js",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "scriptedeuch": "github:Orb-Workshop/scriptedeuch"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "scripts": {
+    "build": "bun build ./src/main.ts --outdir ./scripts --external cs_script/point_script",
+    "watch": "bun --watch build ./src/main.ts --outdir ./scripts --external cs_script/point_script"
+  }
 }
