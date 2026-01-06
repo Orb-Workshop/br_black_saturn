@@ -8,7 +8,7 @@ import {
 } from "./core.ts";
 
 // Saturn Pathfinding
-export default class Pathfinding {
+export default class PathFinding {
     constructor(saturn, options) {
     this.saturn = saturn;
     this.options = options || {};
