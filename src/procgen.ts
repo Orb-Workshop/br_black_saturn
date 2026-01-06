@@ -21,13 +21,17 @@ import {
 // |   \
 // +    -
 
-export const SaturnCubeDimensions = [6, 6];       // [Width, Height], Number of Cubes
-export const CubeDimensions = [8, 8, 8];      // [Width, Height, Depth], Number of Elements per Cube
-export const SaturnWidth = SaturnCubeDimensions[0] * CubeDimensions[0];
-export const SaturnHeight = SaturnCubeDimensions[1] * CubeDimensions[1];
-export const SaturnDepth = CubeDimensions[2];
+export const SaturnWidth = 48;
+export const SaturnHeight = 48;
+export const SaturnDepth = 8;
 export const SaturnDimensions = [SaturnWidth, SaturnHeight, SaturnDepth];
 export const ElementDimensions = [48, 48, 48];
+
+export const ValveWidth = SaturnWidth * ElementDimensions[0];
+export const ValveHeight = SaturnHeight * ElementDimensions[1];
+export const ValveDepth = SaturnDepth * ElementDimensions[2];
+export const ValveDimensions = [ValveWidth, ValveHeight, ValveDepth];
+
 
 // Individual Elements that make up Saturn
 export class SaturnElement {
@@ -51,9 +55,6 @@ export class SaturnElement {
 
   getType() { return this.type; }
   setType(_type) { this.type = _type; }
-  getParentCube() {
-    return this.saturn.getCubeFromElement(this.x, this.y, this.z);
-  }
 
   // BBox representing Element in 'valve units'
   getValveBBox() {
@@ -554,7 +555,6 @@ export class PathCrawler {
 
 // Saturn Itself
 // - this.elements[SaturnElement, ...,]
-// - SaturnCube -> this.cubes[SaturnCubeElement, ...,]
 export class Saturn {
   constructor() {
     // Populate Elements
@@ -662,13 +662,6 @@ export class Saturn {
     let w = this.width() * ElementDimensions[0];
     let h = this.height() * ElementDimensions[1];
     return new BBox(x, y, w, h);
-  }
-
-  // Get the parent cube based on an element index.
-  getCubeFromElement(x, y, z) {
-    let cubeX = Math.floor(x / this.cubes.width());
-    let cubeY = Math.floor(y / this.cubes.height());
-    return this.cubes.getAt(cubeX, cubeY);
   }
 
   // Only displays the first z-plane, [i, j, 0]
