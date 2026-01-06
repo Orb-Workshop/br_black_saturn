@@ -1,16 +1,10 @@
-/* For testing procjen.ts
-   
-   bun run procgen
-
- */
-import ProcGen from "../procgen.ts";
+/* Procgen Integration Test */
+import ProcGen from "./procgen.ts";
 
 //
 // BEGIN
 //
-let args = process.argv || [];
-let seed = args.length > 2 ? args[2] : null;
-let procgen = new ProcGen(seed, {
+let procgen = new ProcGen(null, {
   RoomPlacement: {
     num_rooms: 9,
   },

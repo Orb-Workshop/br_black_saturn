@@ -10,12 +10,11 @@
     "@types/bun": "latest"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^5.9.3"
   },
   "scripts": {
     "build": "bun build ./src/main.ts --outdir ./scripts --external cs_script/point_script",
     "watch": "bun --watch build ./src/main.ts --outdir ./scripts --external cs_script/point_script",
-    "postinstall": "bun run ./bun_postinstall.ts",
-    "procgen": "bun run ./src/debug/cmd.ts"
+    "postinstall": "bun run ./bun_postinstall.ts"
   }
 }
