@@ -206,78 +206,6 @@ export class PlayerSpawn {
   }
 }
 
-// Individual Cube Elements that make up Saturn's Cube.
-export class SaturnCubeElement {
-  constructor(cube, x, y) {
-    this.cube = cube;
-    this.saturn = cube.saturn;
-    this.x = x;
-    this.y = y;
-    this.player_spawns = [
-      new PlayerSpawn(this, {x : 2, y : 2, id:"player_spawn_00"}),
-      new PlayerSpawn(this, {x : 6, y : 2, id:"player_spawn_01"}),
-      new PlayerSpawn(this, {x : 2, y : 6, id:"player_spawn_10"}),
-      new PlayerSpawn(this, {x : 6, y : 6, id:"player_spawn_11"}),
-    ];
-  }
-
-  width() { return CubeDimensions[0]; }
-  height() { return CubeDimensions[1]; }
-  depth() { return CubeDimensions[2]; }
-
-  getBBox() {
-    let x = this.x * this.width();
-    let y = this.y * this.height();
-    let w = this.width();
-    let h = this.height();
-    return new BBox(x, y, w, h);
-  }
-  
-  getValveBBox() {
-    let x = this.x * this.width() * ElementDimensions[0];
-    let y = this.y * this.height() * ElementDimensions[1];
-    let w = this.width() * ElementDimensions[0];
-    let h = this.height() * ElementDimensions[1];
-    return new BBox(x, y, w, h);
-  }
-
-  getPlayerSpawns() { return this.player_spawns; }
-}
-
-// Handles the 'Cube' elements that comprise the map.
-export class SaturnCube {
-  constructor(saturn) {
-    this.saturn = saturn;
-    this.elements = [];
-    this.forEachIndex((i, j) => {
-      this.elements.push(new SaturnCubeElement(this, i, j));
-    });
-  }
-
-  width() { return SaturnCubeDimensions[0]; }
-  height() { return SaturnCubeDimensions[1]; }
-  size() { return (this.width() * this.height()); }
-  index(x, y) {
-    let array_index = this.width() * y + x;
-    return array_index;
-  }
-  
-  forEachIndex(f) {
-    for (let j = 0; j < this.height(); j++) {
-      for (let i = 0; i < this.width(); i++) {
-        f.bind(this)(i, j);
-      }
-    }
-  }
-
-  getAt(x, y) {
-    return this.elements[this.index(x, y)];
-  }
-
-  getAtIndex(idx) {
-    return this.elements[idx];
-  }
-}
 
 // A Deep Copy of Saturn's elements as a (x, y) slice (i, j, 0); k=0
 // Implemented as a derivative of Saturn.
@@ -635,9 +563,6 @@ export class Saturn {
       this.elements.push(new SaturnElement(this, i, j, k));
     });
 
-    // Populate Cubes
-    this.cubes = new SaturnCube(this);
-
     return this;
   }
 
@@ -748,23 +673,16 @@ export class Saturn {
 
   // Only displays the first z-plane, [i, j, 0]
   display2d() {
-    let enabled_players = [];
-    this.cubes.forEachIndex((i, j) => {
-      this.cubes.getAt(i, j).getPlayerSpawns()
-        .filter((p) => p.isEnabled())
-        .forEach((p) => enabled_players.push(p));
-    });
-
     let s = "";
     for (let j = 0; j < this.height(); j++) {
       for (let i = 0; i < this.width(); i++) {
         let element = this.getAt(i,j,0);
 
-        // Display Player Spawns
-        if (enabled_players.some((p) => p.getBBox().checkInside(element.getBBox()))) {
-          s += "P";
-          continue;
-        }
+        //// Display Player Spawns
+        //if (enabled_players.some((p) => p.getBBox().checkInside(element.getBBox()))) {
+        //  s += "P";
+        //  continue;
+        //}
 
         switch(element.getType()) {
           case "fill":    s += "X"; break;
@@ -2113,297 +2031,6 @@ export class MountainPlacement {
   }
 }
 
-export class PlayerPlacement {
-  constructor(procgen, options) {
-    this.procgen = procgen;
-    this.saturn = procgen.saturn;
-    this.srng = procgen.srng;
-    this.options = options || {};
-    this.enabled = (this.options.enabled !== undefined) ? this.options.enabled : true;
-    this.num_player_spawns = this.options.num_player_spawns || 6;
-  }
-
-  getPlayerSpawns() {
-    let player_spawns = [];
-    this.saturn.cubes.forEachIndex((i, j) => {
-      player_spawns = player_spawns.concat(this.saturn.cubes.getAt(i, j).getPlayerSpawns());
-    });
-    return player_spawns;
-  }
-
-  getEnabledPlayerSpawns() {
-    return this.getPlayerSpawns().filter((p) => p.isEnabled());
-  }
-
-  getDisabledPlayerSpawns() {
-    return this.getPlayerSpawns().filter((p) => p.isDisabled());
-  }
-
-  _bruteForceSpawn() {
-    let disabled_players = this.getDisabledPlayerSpawns();
-    disabled_players = this.srng.randomShuffle(disabled_players);
-    for (let dp = 0; dp < disabled_players.length; dp++) {
-      let player = disabled_players[dp];
-      if (this._isPlayerIntersectingEnabledPlayers(player)) continue;
-
-      let elements = this.saturn.locateElementsByBBox(player.getBBox().expand(1));
-      elements.forEach((e) => e.floor());
-      player.setEnabled();
-      return true;
-    }
-    return false;
-  }
-
-  // Check to see if it sits on floor tiles on Saturn.
-  _isPlayerOnSaturn(player) {
-    let elements = this.saturn.locateElementsByBBox(player.getBBox().expand(1));
-    if (elements.some((e) => !e.isFloor()))
-      return false;
-    return true;
-  }
-
-  // Check to see if the player intersects with enabled players spawns on Saturn.
-  // Notes:
-  // - Player Spawns are padded to allow better dispersion.
-  _isPlayerIntersectingEnabledPlayers(player) {
-    let enabled_players = this.getEnabledPlayerSpawns();
-    for (let i = 0; i < enabled_players.length; i++) {
-      let eplayer = enabled_players[i];
-
-      let player_bbox = player.getBBox().expand(5);
-      let eplayer_bbox = eplayer.getBBox().expand(5);
-      if (eplayer_bbox.checkIntersection(player_bbox)) {
-        return true;
-      }
-    }
-    
-    return false;
-  }
-
-  process() {
-    if (!this.enabled) return;
-    let player_spawns = this.getPlayerSpawns();
-
-    // Random Shuffle our player_spawns
-    player_spawns = this.srng.randomShuffle(player_spawns, true);
-    for (let pi = 0; pi < player_spawns.length; pi++) {
-      let player = player_spawns[pi];
-      
-      // Check to see if it sits on a floor big enough to accommodate
-      // the player spawn.
-      if (!this._isPlayerOnSaturn(player)) continue;
-      
-      // Check if the player spawn collides with other player spawns that have already been enabled.
-      if (this._isPlayerIntersectingEnabledPlayers(player)) continue;
-
-      // We Good.
-      player.setEnabled();
-
-      if (this.getEnabledPlayerSpawns().length >= this.num_player_spawns)
-        break;
-    }
-
-    // Brute force spots on Saturn to place the rest of the player spawns.
-    while (this.getEnabledPlayerSpawns().length < this.num_player_spawns) {
-      let bChk = this._bruteForceSpawn();
-      if (!bChk) throw new Error("Failed to find enough spawns; Seed: " + this.procgen.seed);
-    }
-  }
-}
-
-export class PropPlacement {
-  constructor(procgen, options) {
-    this.procgen = procgen;
-    this.saturn = procgen.saturn;
-    this.srng = procgen.srng;
-    this.options = options || {};
-    this.num_props = this.options.num_props || 10;
-    this.pathfinding = new Pathfinding(
-      this.procgen,
-      this.options.Pathfinding,
-    );
-
-    // 
-    this.trophy_room = null;
-  }
-
-  _pointAverage(points) {
-    let average = points.reduce((acc, v) => {
-      acc.x += v.x;
-      acc.y += v.y;
-      return acc;
-    }, new Point(0,0));
-    average.x /= points.length;
-    average.y /= points.length;
-    return average;
-  }
-
-  // Returns the biggest bbox it can find that can comfortably fit in the given bbox space.
-  _findMaxFloorBBox(bbox) {
-    let elements = this.saturn.locateElementsByBBox(bbox);
-    // Step 1: find longest running 'floor' line of elements. We'll start with the horizontal.
-    
-  }
-
-  _bruteForceTrophyPlacement(epoints) {
-    let players = this.procgen.playerPlacement.getEnabledPlayerSpawns();
-    epoints = this.srng.randomShuffle(epoints.map((e) => e));
-    
-    // Check Equidistant Points.
-    for (let i = 0; i < epoints.length; i++) {
-      let ep = epoints[i];
-      let element_bbox = this.saturn.locateElement(ep.x, ep.y).getBBox().expand(2);
-      if (!players.some((p) => p.getBBox().expand(2).checkIntersection(element_bbox))) {
-        return ep;
-      }
-    }
-    
-    // We still failed to find a location for the trophy room, so we choose random spots to check against.
-    while (true) {
-      let ex = this.srng.randomInteger(3, this.saturn.width()-4);
-      let ey = this.srng.randomInteger(3, this.saturn.height()-4);
-      let element_bbox = this.saturn.locateElement(ex, ey).getBBox().expand(2);
-      if (!players.some((p) => p.getBBox().expand(2).getIntersection(element_bbox))) {
-        return new Point(ex, ey);
-      }
-    }
-    return null;
-  }
-  
-  _generateTrophyRoomDoors(element) {
-    let raytraceDoor = () => new RayTracing(this.procgen, {
-      starting_point: element.getBBox().center().toArray(),
-      max_distance: 5,
-    }).getRayCollision();
-    let door_count = 0;
-    let num_doors = 1;
-    while (door_count < num_doors) {
-      let door_element = raytraceDoor();
-      if (door_element !== null) {
-        door_element.floor();
-        door_count += 1;
-      }
-    }
-  }
-
-  _generateTrophyRoomWindows(element) {
-    let raytraceWindow = () => new RayTracing(this.procgen, {
-      starting_point: element.getBBox().center().toArray(),
-      max_distance: 5,
-    }).getRayCollision();
-    let window_count = 0;
-    let num_windows = 2;
-    while (window_count < num_windows) {
-      let window_element = raytraceWindow();
-      if (window_element !== null) {
-        window_element.window();
-        window_count += 1;
-      }
-    }
-  }
-
-  _generateTrophyRoom(point) {
-    let element = this.saturn.locateElement(point.x, point.y, 0);
-    let outer_trophy = element.getBBox().expand(2);
-    this.saturn.locateElementsByBBox(outer_trophy).forEach((e) => e.fill());
-    let inner_trophy = element.getBBox().expand(1);
-    this.saturn.locateElementsByBBox(inner_trophy).forEach((e) => e.floor());
-    element.setType("trophy");
-    // Raytrace some doors
-    this._generateTrophyRoomDoors(element);
-    this._generateTrophyRoomWindows(element);
-
-    return {
-      outer: outer_trophy,
-      inner: inner_trophy,
-      element: element,
-    };
-  }
-
-  _performTrophyRoomPathCrawl() {
-    let element = this.trophy_room.element;
-    let pathfinding = this.pathfinding;
-    let players = this.procgen.playerPlacement.getEnabledPlayerSpawns();
-    let pathcrawler = new PathCrawler(this.procgen, {});
-    players.map((p) => p.getBBox().center().toArray().map((v) => Math.floor(v)))
-      .forEach((p) => {
-        let path = pathfinding.getShortestPaths(element.x, element.y);
-        pathcrawler.crawl(path, p[0], p[1]);
-      });
-    element.setType("trophy");
-  }
-
-  _generatePlayerCover(edge) {
-    let player_left = edge.point_left;
-    let player_right = edge.point_right;
-    let edge_segment = edge.edge_segment;
-
-    while(this._checkPlayerLineOfSight(player_left, player_right)) {
-      let random_point = edge_segment.getNormalizedPoint(
-        this.srng.randomFloat(0, 1));
-      this.saturn.locateElement(random_point.x, random_point.y).fill();
-      console.log("Random Point: ", random_point);
-    }
-  }
-
-  _checkPlayerLineOfSight(player_left, player_right) {
-    let player_segment = new LineSegment(player_left, player_right);
-    let distance = player_segment.distance();
-    let direction = player_segment.direction();
-    let elements_los = [];
-    for (let i = 0.0; i <= 1.0; i+=0.1) {
-      let norm_point = player_segment.getNormalizedPoint(i);
-      let element = this.saturn.locateElement(norm_point.x, norm_point.y);
-      if (elements_los.includes(element)) continue;
-      else elements_los.push(element);
-    }
-    if (elements_los.some((e) => ["mountain", "fill", "prop"].includes(e.getType()))) {
-      return false;
-    }
-    return true;
-  }
-
-  getTrophyRoom() {
-    return this.trophy_room;
-  }
-
-  process() {
-    let players = this.procgen.playerPlacement.getEnabledPlayerSpawns();
-    // Form a Voronoi between player spawns to find the best places to
-    // put props and trophy rooms for concealment between spawns.
-    // Edge Segments form theoretical 'barriers' between player
-    // spawns.
-    let v_diagram = new VoronoiDiagram(this.procgen);
-    let points = players.map((p) => p.getBBox().center());
-    v_diagram.compute(points);
-    let epoints = v_diagram.getEquidistantPoints();
-    let avg_point = this._pointAverage(epoints);
-    let avg_element = this.saturn.locateElement(avg_point.x, avg_point.y, 0);
-
-    // Check to see if our average point between equidistant points is a suitable location for our trophy room.
-    let avg_bbox = avg_element.getBBox().expand(2);
-    if (players.some((p) => p.getBBox().expand(2).checkIntersection(avg_bbox))) {
-      // Otherwise, use a brute force strategy to place the room.
-      avg_point = this._bruteForceTrophyPlacement(epoints);
-    }
-
-    // Generate our trophy room based on our best fit location.
-    this.trophy_room = this._generateTrophyRoom(avg_point);
-
-    // Crawl towards the trophy from all player spawns.
-    this._performTrophyRoomPathCrawl();
-
-    // Form cover between players using voronoi edge segments.
-    let edges = v_diagram.getCompleteEdges();
-    //edges.forEach((e) => this._generatePlayerCover(e));
-    
-    
-
-    // TODO: Look at line of sight between players and intelligently place cover props
-    // TODO: use the Voronoi edge segments to determine best tier 2 weapon placement.
-    // TODO: tier 1 guns should be placed on each player spawn.
-  }
-}
 
 // Combine Techniques...
 export default class ProcGen {
@@ -2446,16 +2073,6 @@ export default class ProcGen {
       this,
       this.options.MountainPlacement,
     );
-
-    this.playerPlacement = new PlayerPlacement(
-      this,
-      this.options.PlayerPlacement,
-    );
-
-    this.propPlacement = new PropPlacement(
-      this,
-      this.options.PropPlacement,
-    );
     
     return this;
   }
@@ -2483,10 +2100,8 @@ export default class ProcGen {
     this.mountainPlacement.process();
 
     // Stage 7 - Determine Player Spawn Placement
-    this.playerPlacement.process();
 
     // Stage 8 -  Place Trophy Room. Place props on the map.
-    this.propPlacement.process();
 
     return this;
   }
