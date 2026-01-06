@@ -1,20 +1,21 @@
 {
-    "name": "br_black_saturn",
-    "module": "scripts/main.js",
-    "type": "module",
-    "private": true,
-    "dependencies": {
-        "scriptedeuch": "github:Orb-Workshop/scriptedeuch#master"
-    },
-    "devDependencies": {
-        "@types/bun": "latest"
-    },
-    "peerDependencies": {
-        "typescript": "^5"
-    },
-    "scripts": {
-        "build": "bun build ./src/main.ts --outdir ./scripts --external cs_script/point_script",
-        "watch": "bun --watch build ./src/main.ts --outdir ./scripts --external cs_script/point_script",
-        "postinstall": "bun run ./bun_postinstall.ts"
-    }
+  "name": "br_black_saturn",
+  "module": "scripts/main.js",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "scriptedeuch": "github:Orb-Workshop/scriptedeuch#master"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "scripts": {
+    "build": "bun build ./src/main.ts --outdir ./scripts --external cs_script/point_script",
+    "watch": "bun --watch build ./src/main.ts --outdir ./scripts --external cs_script/point_script",
+    "postinstall": "bun run ./bun_postinstall.ts",
+    "procgen": "bun run ./src/debug/cmd.ts"
+  }
 }
