@@ -17,216 +17,10 @@ import {
     Saturn2D,
 } from "./saturn/core.ts";
 import PathFinding from "./saturn/PathFinding.ts";
-
-
-
-const DEFAULT_TRANSMUTE_LIST = {
-  mountain: "floor",
-  fill: "floor",
-  cover: "floor",
-  window: "floor",
-};
-export class PathCrawler {
-  constructor(procgen, options) {
-    this.procgen = procgen;
-    this.saturn = procgen.saturn;
-    this.srng = procgen.srng;
-    this.options = options || {};
-    // TODO: Path Width is hardcoded to 2, add functionality.
-    this.path_width = this.options.path_width || 2;
-    this.transmute_list = this.options.transmute_list || DEFAULT_TRANSMUTE_LIST;
-  }
-
-  _traversePath(element_from, element_to) {
-    if (element_to === null) return;
-    let direction = this._directionTo(element_from, element_to);
-    // Paths only go up/down or left/right
-    direction = (direction.lr !== null) ? direction.lr : direction.ud;
-    switch(direction) {
-      case "left": this._traverseLeft(element_from); break;
-      case "right": this._traverseRight(element_from); break;
-      case "up": this._traverseUp(element_from); break;
-      case "down": this._traverseDown(element_from); break;
-      default: throw new Error("This should never happen");
-    }
-  }
-
-  _directionTo(element_from, element_to) {
-    // Left / Right
-    let direction_lr = null;
-    if (element_from.x < element_to.x) direction_lr = "right";
-    else if (element_from.x > element_to.x) direction_lr = "left";
-    
-    // Up / Down
-    let direction_ud = null;
-    if (element_from.y < element_to.y) direction_lr = "down";
-    else if (element_from.y > element_to.y) direction_lr = "up";
-
-    //
-    return {lr: direction_lr, ud: direction_ud};
-  }
-
-  _traverseLeft(element) {
-    element.floor();
-    let t_element = element.left();
-    let ta_element = t_element.up();
-    let tb_element = t_element.down();
-
-    t_element.floor();
-
-    // Check Null Edge Cases
-    if (ta_element === null) {
-      tb_element.floor();
-      return;
-    }
-
-    if (tb_element === null) {
-      ta_element.floor();
-      return;
-    }
-
-    if (ta_element.isFloor() || tb_element.isFloor()) return;
-
-    if (this.srng.randomChance(0.5)) {
-      ta_element.floor();
-      return;
-    }
-    else {
-      tb_element.floor();
-      return;
-    }
-  }
-
-  _traverseRight(element) {
-    element.floor();
-    let t_element = element.right();
-    let ta_element = t_element.up();
-    let tb_element = t_element.down();
-
-    t_element.floor();
-
-    // Check Null Edge Cases
-    if (ta_element === null) {
-      tb_element.floor();
-      return;
-    }
-
-    if (tb_element === null) {
-      ta_element.floor();
-      return;
-    }
-
-    if (ta_element.isFloor() || tb_element.isFloor()) return;
-
-    if (this.srng.randomChance(0.5)) {
-      ta_element.floor();
-      return;
-    }
-    else {
-      tb_element.floor();
-      return;
-    }
-  }
-
-  _traverseUp(element) {
-    element.floor();
-    let t_element = element.up();
-    let ta_element = t_element.left();
-    let tb_element = t_element.right();
-
-    t_element.floor();
-
-    // Check Null Edge Cases
-    if (ta_element === null) {
-      tb_element.floor();
-      return;
-    }
-
-    if (tb_element === null) {
-      ta_element.floor();
-      return;
-    }
-
-    if (ta_element.isFloor() || tb_element.isFloor()) return;
-
-    if (this.srng.randomChance(0.5)) {
-      ta_element.floor();
-      return;
-    }
-    else {
-      tb_element.floor();
-      return;
-    }
-  }
-
-  _traverseDown(element) {
-    element.floor();
-    let t_element = element.down();
-    if (t_element === null) return;
-    let ta_element = t_element.left();
-    let tb_element = t_element.right();
-
-    t_element.floor();
-
-    // Check Null Edge Cases
-    if (ta_element === null) {
-      tb_element.floor();
-      return;
-    }
-
-    if (tb_element === null) {
-      ta_element.floor();
-      return;
-    }
-
-    if (ta_element.isFloor() || tb_element.isFloor()) return;
-
-    if (this.srng.randomChance(0.5)) {
-      ta_element.floor();
-      return;
-    }
-    else {
-      tb_element.floor();
-      return;
-    }
-  }
-
-  _pathNext(path, element) {
-    let px = element.x;
-    let py = element.y;
-    let element_parent_position = path.getAt(px, py).parent;
-    if (element_parent_position === null) return null;
-    let ep_x = element_parent_position[0];
-    let ep_y = element_parent_position[1];
-    let parent_element = this.saturn.getAt(ep_x, ep_y);
-    if (parent_element === undefined)
-      console.log(ep_x, ep_y);
-
-    return parent_element;
-  }
-
-  // Crawls a `path` provided by using the method
-  // Pathfinding.getShortestPaths(x_destination, y_destination)
-  // Notes:
-  // - `path` is a Saturn2D instance containing elements with a `.parent` attr.
-  //   - This 'parent' attribute points at the element leading to the shortest path.
-  crawl(path, x, y) {
-    let current_position = [x, y];
-    while (current_position !== null) {
-      let px = current_position[0];
-      let py = current_position[1];
-      let element_from = this.saturn.getAt(px, py, 0);
-      let element_to = this._pathNext(path, element_from);
-      this._traversePath(element_from, element_to);
-      current_position = (element_to !== null) ? [element_to.x, element_to.y] : null;
-    }
-  }
-}
-
-
-
-
-
+import PathCrawler from "./saturn/PathCrawler.ts";
+import WormCrawler from "./saturn/WormCrawler.ts";
+import RayTracing from "./saturn/RayTracing.ts";
+import DiffusionLimitedAggregation from "./saturn/DiffusionLimitedAggregation.ts";
 /*
   Procedural Generation Strategies
  */
@@ -235,30 +29,6 @@ export class PathCrawler {
 //
 // Room Placement
 //
-export class Room {
-  constructor(x, y, w, h) {
-    this.x = x;
-    this.y = y;
-    this.w = w;
-    this.h = h;
-  }
-
-  getBBox() {
-    let x = this.x;
-    let y = this.y;
-    let w = this.w;
-    let h = this.h;
-    return new BBox(x, y, w, h);
-  }
-
-  getValveBBox() {
-    let x = this.x * ElementDimensions[0];
-    let y = this.y * ElementDimensions[1];
-    let w = this.w * ElementDimensions[0];
-    let h = this.h * ElementDimensions[1];
-    return new BBox(x, y, w, h);
-  }
-}
 
 const RP_DEFAULT_HALLWAY_WIDTH = 3;
 const RP_DEFAULT_CEILING_HEIGHT = 4;
@@ -317,21 +87,21 @@ export class RoomPlacement {
         this.srng.randomInteger(this.saturn.height()-1),
       ];
       
-      let room = new Room(
+      let room = new BBox(
         room_position[0],
         room_position[1],
         room_dimensions[0],
         room_dimensions[1],
       );
 
-      if (!this.saturn.getBBox().checkInside(room.getBBox()))
+      if (!this.saturn.getBBox().checkInside(room))
         continue;
       
       // Check if it can co-exist with other placed rooms
       let bCollision = false;
       for (let i = 0; i < this.placed_rooms.length; i++) {
         let placed_room = this.placed_rooms[i];
-        if (room.getBBox().checkIntersection(placed_room.getBBox())) {
+        if (room.checkIntersection(placed_room)) {
           bCollision = true;
           break;
         }
@@ -784,289 +554,6 @@ export class BridgePlacement {
   }
 }
 
-// Drunkard's Walk
-export class WormCrawler {
-  constructor(procgen, options) {
-    this.procgen = procgen;
-    this.saturn = procgen.saturn;
-    this.srng = procgen.srng;
-    this.options = options || {};
-    this.enabled = (this.options.enabled !== undefined) ? this.options.enabled : true;
-    this.start_direction = this.options.start_direction || "top";
-    
-    let start_x = Math.floor(this.saturn.width() / 2);
-    let start_y = Math.floor(this.saturn.height() / 2);
-    this.start_position = this.options.start_position || [start_x, start_y];
-    this.distribution = this.options.distribution || {
-      top: 10,
-      right: 10,
-      bottom: 10,
-      left: 10,
-    };
-    this.steps = this.options.steps || 10;
-    this.trail_type = this.options.trail_type || "floor";
-    this.trail_width = this.options.trail_width || 3;
-    this.trail_step_interval = this.options.trail_step_interval || 4;
-
-    //
-    this.step_num = 0;
-    this.current_position = this.start_position;
-    this.current_direction = this.start_direction;
-    
-    return this;
-  }
-  
-  _step() {
-    if (this.step_num != 0 &&
-        (this.step_num % this.trail_step_interval) == 0)
-      this.current_direction = this.srng.randomDistribution(this.distribution);
-    switch(this.current_direction) {
-      case "top": this._crawlTop(); break;
-      case "right": this._crawlRight(); break;
-      case "bottom": this._crawlBottom(); break;
-      case "left": this._crawlLeft(); break;
-    }
-    this.step_num += 1;
-  }
-
-  _calculateTrailSpread() {
-    if (this.trail_width == 1) return [0, 0];
-    if (this.trail_width == 2) return this.srng.randomChance(0.5) ? [1,0] : [0, 1];
-    if (this.trail_width % 2 == 0) {
-      let spread = this.trail_width / 2;
-      return [spread, spread];
-    }
-    else {
-      let spread = (this.trail_width-1) / 2;
-      return [spread, spread];
-    }
-  }
-
-  _crawlTop() {
-    let x = this.current_position[0];
-    let y = this.current_position[1];
-    let spread = this._calculateTrailSpread();
-    for (let i = (x-spread[0]); i < (x+spread[1]); i++) {
-      if (i < 0 || i >= (this.saturn.width()-1)) continue;
-      let element = this.saturn.getAt(i, y, 0);
-      element.setType(this.trail_type);
-    }
-    if ((y-1) >= 0)
-      this.current_position[1] -= 1;
-  }
-
-  _crawlRight() {
-    let x = this.current_position[0];
-    let y = this.current_position[1];
-    let spread = this._calculateTrailSpread();
-    for (let j = (y-spread[0]); j < (y+spread[1]); j++) {
-      if (j < 0 || j >= (this.saturn.height()-1)) continue;
-      let element = this.saturn.getAt(x, j, 0);
-      element.setType(this.trail_type);
-    }
-    if ((x+1) < this.saturn.width())
-      this.current_position[0] += 1;
-  }
-
-  _crawlBottom() {
-    let x = this.current_position[0];
-    let y = this.current_position[1];
-    let spread = this._calculateTrailSpread();
-    for (let i = (x-spread[0]); i < (x+spread[1]); i++) {
-      if (i < 0 || i >= (this.saturn.width()-1)) continue;
-      let element = this.saturn.getAt(i, y, 0);
-      element.setType(this.trail_type);
-    }
-    if ((y+1) < this.saturn.height())
-      this.current_position[1] += 1;
-  }
-
-  _crawlLeft() {
-    let x = this.current_position[0];
-    let y = this.current_position[1];
-    let spread = this._calculateTrailSpread();
-    for (let j = (y-spread[0]); j < (y+spread[1]); j++) {
-      if (j < 0 || j >= (this.saturn.height()-1)) continue;
-      let element = this.saturn.getAt(x, j, 0);
-      element.setType(this.trail_type);
-    }
-    if ((x-1) >= 0)
-      this.current_position[0] -= 1;
-  }
-
-  process() {
-    if (!this.enabled) return;
-    for (let i = 0; i < this.steps; i++) {
-      this._step();
-    }
-  }
-}
-
-export class DiffusionLimitedAggregation {
-  constructor(procgen, options) {
-    this.procgen = procgen;
-    this.saturn = procgen.saturn;
-    this.srng = procgen.srng;
-    this.options = options || {};
-    this.cycles = this.options.cycles || 50000;
-    this.max_aggregate = this.options.max_aggregate || 6;
-    this.fill_type = this.options.fill_type || "cover";
-    this.filter_whitelist = this.options.filter_whitelist || ["empty"];
-    this.seed_point = this.options.seed_point || this._generateParticle();
-
-    // [SaturnElement, ...]
-    this.current_aggregates = [this.seed_point];
-
-    this.particle = null;
-  }
-
-  _generateParticle() {
-    while(true) {
-      let x = this.srng.randomInteger(0, this.saturn.width()-1);
-      let y = this.srng.randomInteger(0, this.saturn.height()-1);
-      let element = this.saturn.getAt(x, y, 0);
-      if (this.filter_whitelist.includes(element.getType())) {
-        return element;
-      }
-    }
-  }
-
-  _iterateCycle() {
-    if (this.particle === null)
-      this.particle = this._generateParticle();
-
-    // Check if we reached the maximum number of aggregates.
-    if (this.current_aggregates.length >= this.max_aggregate) return true; 
-
-    // Check if the particle is near any aggregates
-    if (this.current_aggregates.includes(this.particle.up()) ||
-        this.current_aggregates.includes(this.particle.right()) ||
-        this.current_aggregates.includes(this.particle.down()) ||
-        this.current_aggregates.includes(this.particle.left())) {
-      // Check if I can place an aggregate here, otherwise fire a new particle.
-      if (this.filter_whitelist.includes(this.particle.getType())) {
-        this.current_aggregates.push(this.particle);
-        this.particle = null;
-        return false;
-      }
-      else {
-        this.particle = null;
-        return false;
-      }
-    }
-
-    let distribution = {
-      up: 1,
-      right: 1,
-      down: 1,
-      left: 1,
-    };
-
-    switch(this.srng.randomDistribution(distribution)) {
-      case "up": this.particle = this.particle.up(); break;
-      case "right": this.particle = this.particle.right(); break;
-      case "down": this.particle = this.particle.down(); break;
-      case "left": this.particle = this.particle.left(); break;
-    }
-    return false;
-  }
-
-  process() {
-    let bMaxAggregates = false;
-    for (let i = 0; i < this.cycles; i++) {
-      bMaxAggregates = this._iterateCycle();
-      if (bMaxAggregates) break;
-    }
-
-    this.current_aggregates.forEach((element) => element.setType(this.fill_type));
-  }
-}
-
-export class RayTracing {
-  constructor(procgen, options) {
-    this.procgen = procgen;
-    this.saturn = procgen.saturn;
-    this.srng = procgen.srng;
-    this.options = options || {};
-    this.func_collision = this.options.func_collision || ((element) => element.isFill());
-    this.func_negation = this.options.func_negation || ((element) => false);
-    this.starting_point = this.options.starting_point || this._generatePoint();
-    this.starting_direction = this.options.starting_direction || this._generateDirection();
-    this.max_distance = this.options.max_distance ||
-      Math.floor((this.saturn.width() + this.saturn.height()) * 2);
-    this.propagation_distance = this.options.propagation_distance || 0.1;
-
-    this.current_point = this.starting_point;
-    this.current_element = this.saturn.locateElement(this.starting_point[0], this.starting_point[1], 0);
-  }
-
-  _generatePoint() {
-    while(true) {
-      let x = this.srng.randomFloat(0, this.saturn.width()-1);
-      let y = this.srng.randomFloat(0, this.saturn.height()-1);
-      let element = this.saturn.getAt(Math.floor(x), Math.floor(y), 0);
-      if (!this.func_collision(element) &&
-          !this.func_negation(element)) {
-        return [x, y];
-      }
-    }
-  }
-
-  // Direction Vector / Unit Vector
-  _generateDirection() {
-    let x = this.srng.randomFloat(-1, 1);
-    let y = this.srng.randomFloat(-1, 1);
-    let mag = Math.sqrt((x*x) + (y*y));
-    return [ x / mag, y / mag ];
-  }
-
-  _getDistance() {
-    let p1 = this.starting_point;
-    let p2 = this.current_point;
-    let pt = [p1[0] - p2[0], p1[1] - p2[1]];
-    return Math.hypot(pt[0], pt[1]);
-  }
-
-  _propagateRay() {
-    let x_c = this.starting_direction[0] * this.propagation_distance;
-    let y_c = this.starting_direction[1] * this.propagation_distance;
-    this.current_point[0] += x_c;
-    this.current_point[1] += y_c;
-    this._applyLoopAround(this.current_point);
-  }
-
-  _applyLoopAround(p) {
-    let w = this.saturn.width();
-    let h = this.saturn.height();
-    p[0] = (p[0] >= 0) ? p[0] : w-1;
-    p[0] = (p[0] <= w-1) ? p[0] : 0;
-    p[1] = (p[1] >= 0) ? p[1] : h-1;
-    p[1] = (p[1] <= h-1) ? p[1] : 0;
-    return p;
-  }
-
-  // Returns null if func_negation --> true
-  // Returns null if max_distance reached.
-  getRayCollision() {
-    let element = null;
-    while(this._getDistance() < this.max_distance) {
-      this._propagateRay();
-      element = this.saturn.locateElement(this.current_point[0],
-                                          this.current_point[1]);
-      if (this.current_element !== element) {
-        this.current_element = element;
-        if (this.func_collision(element)) {
-          return element;
-        }
-        else if (this.func_negation(element)) {
-          return null;
-        }
-      }
-    }
-    return element;
-  }
-}
-
 export class CoverPlacement {
   constructor(procgen, options) {
     this.procgen = procgen;
@@ -1080,7 +567,7 @@ export class CoverPlacement {
   process() {
     if (!this.enabled) return;
     for (let i = 0; i < this.num_cover; i++) {
-      let dLA = new DiffusionLimitedAggregation(this.procgen);
+        let dLA = new DiffusionLimitedAggregation(this.saturn, this.srng);
       dLA.process();
     }
   }
@@ -1089,7 +576,8 @@ export class CoverPlacement {
 export class WindowPlacement {
   constructor(procgen, options) {
     this.procgen = procgen;
-    this.saturn = procgen.saturn;
+      this.saturn = procgen.saturn;
+      this.srng = procgen.srng;
     this.options = options || {};
     this.enabled = (this.options.enabled !== undefined) ? this.options.enabled : true;
     this.num_windows = this.options.num_windows || 10;
@@ -1142,7 +630,9 @@ export class WindowPlacement {
     // Number of iterations is based on the number of rays and it's level of penetration.
     let num_iterations = Math.ceil(this.num_windows / this.penetration);
     for (let i = 0; i < num_iterations; i++) {
-      let raytracing = new RayTracing(this.procgen, {func_collision: ((e) => e.isFill())});
+        let raytracing = new RayTracing(this.saturn, this.srng, {
+            func_collision: ((e) => e.isFill())
+        });
       for (let p = 0; p < this.penetration; p++) {
         // Collide rays against the side of the buildings to make windows.
         let element = raytracing.getRayCollision();
@@ -1157,7 +647,8 @@ export class WindowPlacement {
 export class MountainPlacement {
   constructor(procgen, options) {
     this.procgen = procgen;
-    this.saturn = procgen.saturn;
+      this.saturn = procgen.saturn;
+      this.srng = procgen.srng;
     this.options = options || {};
     this.enabled = (this.options.enabled !== undefined) ? this.options.enabled : true;
     this.num_mountains = this.options.num_mountains || 2;
@@ -1168,7 +659,7 @@ export class MountainPlacement {
     for (let i = 0; i < this.num_mountains; i++) {
       let checkCollision = (element) => ["floor", "cover"].includes(element.getType());
       let checkNegation = (element) => ["fill", "window"].includes(element.getType());
-      let raytracing = new RayTracing(this.procgen, {
+        let raytracing = new RayTracing(this.saturn, this.srng, {
         func_collision: checkCollision,
         func_negation: checkNegation,
       });
